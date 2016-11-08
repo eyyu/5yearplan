@@ -1,5 +1,7 @@
 #pragma once
 
+#include "timer.h"
+
 #include <string>
 #include <cstdint>
 #include <queue>
@@ -20,13 +22,20 @@ class Transmitter {
     std::queue<Packet> outputQueue;
     std::fstream currentFile;
 
+    void ackTimeout();
+    typedef Timer<Transmitter, &ackTimeout, (1027 / 9600)> AckTimer;
+    AckTimer ackTimer;
+
     std::vector<std::string> packetizeData(const std::string& data) const;
     Packet buildPacket(const std::string& data) const;
 
 public:
+    Transmitter();
     void addDataToQueue(const std::string& data);
     void addFileToQueue(const LPTSTR& filePath);
+    void addFileToQueue(const std::string& filePath);
     void sendPacket(const Packet& p);
+    bool outGoingDataInBuffer() const { return !outputQueue.empty();};
 
 };
 
