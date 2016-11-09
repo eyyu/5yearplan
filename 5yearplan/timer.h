@@ -25,7 +25,7 @@ public:
 };
 
 //Random timer with member function pointer
-template<void(typename T, void(*ev)(), unsigned long minDuration = 0, unsigned long maxDuration = 100>
+template<typename T, void(*ev)(), unsigned long minDuration = 0, unsigned long maxDuration = 100>
 class Timer {
     //Predefined 64 bit random engine
     std::mt19937_64 rand;

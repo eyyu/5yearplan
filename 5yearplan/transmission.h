@@ -14,8 +14,7 @@ struct Packet {
     std::string data;
     uint_fast16_t crc;
     
-    Packet();
-    Packet(const std::string& data);
+    Packet(const std::string& data = std::string(1024, 0x00)) : data(data), crc(calculateCRC16(data)) {}
 };
 
 class Transmitter {
@@ -26,11 +25,11 @@ class Transmitter {
     typedef Timer<Transmitter, &ackTimeout, (1027 / 9600)> AckTimer;
     AckTimer ackTimer;
 
-    std::vector<std::string> packetizeData(const std::string& data) const;
+    std::vector<std::string> packetizeData(const std::string& data, const bool addEmptyData = false) const;
     Packet buildPacket(const std::string& data) const;
 
 public:
-    Transmitter();
+    Transmitter() = default;
     void addDataToQueue(const std::string& data);
     void addFileToQueue(const LPTSTR& filePath);
     void addFileToQueue(const std::string& filePath);
@@ -39,8 +38,8 @@ public:
 
 };
 
-uint16_t calculateCRC(const std::string& data);
+uint_fast16_t calculateCRC16(const std::string& data);
 
 bool validateCRC(const Packet& p);
-bool validateCRC(const std::string data, const uint_fast16_t crc);
+bool validateCRC(const std::string& data, const uint_fast16_t crc);
 
