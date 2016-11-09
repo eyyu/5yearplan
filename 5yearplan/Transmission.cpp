@@ -21,24 +21,24 @@ Packet Transmitter::buildPacket(const std::string & data) const {
 }
 
 std::vector<std::string> Transmitter::packetizeData(const std::string& data, const bool addEmptyPacket) const {
-    size_t packetNum = data.length() >> 10;
+    const size_t packetNum = data.length() / DATA_SIZE;
     std::vector<std::string> dataChunks;
 
     for (size_t i = 0; i < packetNum; ++i) {
-        dataChunks.emplace_back(data, i << 10, 1024);
+        dataChunks.emplace_back(data, i * DATA_SIZE, DATA_SIZE);
     }
-    if (data.length() % 1024) {
-        std::string remaining = data.substr(packetNum << 10);
-        dataChunks.push_back(remaining.append(1024 - remaining.length(), 0x00));
+    if (data.length() % DATA_SIZE) {
+        std::string remaining = data.substr(packetNum * DATA_SIZE);
+        dataChunks.push_back(remaining.append(DATA_SIZE - remaining.length(), NULL_BYTE));
     }
     if (addEmptyPacket) {
-        dataChunks.emplace_back(1024, 0x00);
+        dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
     }
     return dataChunks;
 }
 
 bool validateCRC(const Packet& p) {
-    return validateCRC(p.data, p.crc);
+    return transmit::validateCRC(p.data, p.crc);
 }
 
 bool validateCRC(const std::string& data, const uint_fast16_t crc) {
