@@ -19,7 +19,7 @@ namespace transmit {
     struct Packet { 
         static constexpr unsigned char syn = SYN;
         std::string data;
-        uint_fast16_t crc;
+        uint16_t crc;
 
         Packet(const std::string& data = std::string(1024, NULL_BYTE)) : data(data), crc(calculateCRC16(data)) {}
     };
@@ -44,9 +44,9 @@ namespace transmit {
         bool outGoingDataInBuffer() const { return !outputQueue.empty(); };
     };
 
-    uint_fast16_t calculateCRC16(const std::string& data);
+    uint16_t calculateCRC16(const std::string& data);
 
     bool validateCRC(const Packet& p);
-    bool validateCRC(const std::string& data, const uint_fast16_t crc);
+    bool validateCRC(const std::string& data, const uint16_t crc);
 
 }

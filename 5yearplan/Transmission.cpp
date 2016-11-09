@@ -47,67 +47,50 @@ bool validateCRC(const std::string& data, const uint_fast16_t crc) {
 }
 
 /*
-TEMPORARY
-DOES NOT WORK
+* Copied and modified from:
+* https://stackoverflow.com/questions/21939392/crc-16-program-to-calculate-check-sum
 */
-uint_fast16_t calculateCRC16(const std::string& data) {
-    static constexpr unsigned long long poly = 0x8005;
-    unsigned long long hex;
+uint16_t calculateCRC16(const std::string& data) {
+    static constexpr auto poly = 0x8005;
+    auto size = data.size();
+    uint16_t out = 0;
+    int bits_read = 0;
+    bool bit_flag;
 
-    std::istringstream iss(data);
-    iss >> std::hex >> hex;
+    std::vector<char> bytes(data.begin(), data.end());
 
-    std::bitset<64> bf(hex);
+    int i = 0;
+    while (size > 0) {
+        bit_flag = out >> 15;
 
-    std::cout << bf << std::endl;
-    std::cout << hex << std::endl;
-    hex <<= 15;
+        /* Get next bit: */
+        // item a) work from the least significant bits
+        out = (out << 1) | ((bytes[i] >> bits_read) & 1);
 
-    bf = std::bitset<64>(hex);
-    std::cout << bf << std::endl;
+        /* Increment bit counter: */
+        if (++bits_read > 7) {
+            bits_read = 0;
+            i++;
+            size--;
+        }
 
-    const auto dataSize = sizeof(hex) << 3;
-    uint_fast16_t crc;
-
-    size_t firstSetBit = 0;
-
-    std::bitset<64> bs(poly);
-
-    std::cout << bs << std::endl;
-
-    auto hexCopy = hex;
-
-    while (hexCopy >>= 1) {
-        ++firstSetBit;
-    }
-
-    std::cout << firstSetBit << std::endl;
-
-    std::cout << dataSize << std::endl;
-
-    for (size_t i = 0; i < firstSetBit - 1 && hex >> 16; ++i) {
-        std::cout << std::endl << "Dat: " << std::bitset<64>(hex >> 15) << std::endl << std::endl;
-        //Starts with 1
-        if (hex & (1ULL << (firstSetBit - i))) {
-            //XOR with the polynomial shifted by the size of the poly, and the current bit number
-            std::cout << "Pre: " << std::bitset<64>(hex) << std::endl;
-            std::cout << "Pat: " << std::bitset<64>(poly << (firstSetBit - 15 - i)) << std::endl;
-            hex ^= (poly << (firstSetBit - 15 - i));
-            crc = hex ^ 0x0000;
-            std::cout << "Pos: " << std::bitset<64>(hex) << std::endl;
-            std::cout << std::endl;
+        /* Cycle check: */
+        if (bit_flag) {
+            out ^= poly;
         }
     }
 
-    std::cout << "Result: " << (hex << 1) << std::endl;
+    // item b) "push out" the last 16 bits
+    for (int i = 0; i < 16; ++i) {
+        out = (out << 1) ^ (poly * static_cast<bool>(out >> 15));
+    }
 
-    if (hex ^ 0x0000) {
-        //CRC worked???
-        std::cout << "Test: " << (hex ^ 0x0000) << std::endl;
-        crc = hex ^ 0x0000;
-    } else {
-        //CRC failed which should be impossible;
-        crc = 0;
+    // item c) reverse the bits
+    uint16_t crc = 0;
+    for (int i = 0x8000, j = 0x001; i; i >>= 1, j <<= 1) {
+        if (i & out) {
+            crc |= j;
+        }
     }
     return crc;
 }
