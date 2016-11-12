@@ -2,6 +2,7 @@
 #ifndef RECEIVE_H
 #define RECEIVE_H
 
+#define SYN_SIZE 1
 #define DATA_SIZE 1024
 #define CRC_SIZE 2
 #define BAUD_RATE 9600
@@ -13,6 +14,7 @@
 #include <vector>
 #include <string>
 #include <queue>
+#include "timer.h"
 
 namespace receive {
 
@@ -28,13 +30,17 @@ namespace receive {
 		DWORD packetCounter;
 		DWORD errorCounter;
 		Process process;
+		BOOL isPacketTimedOut;
 
 		void sendACK(HANDLE handleCom);
-		BOOL waitForPacket(HANDLE handleCom);
-		BOOL retrievePacket(HANDLE handleCom, Packet &packet);
-		BOOL parsePacket(Packet &packet);
+		BOOL waitForPacket(HANDLE handleCom, std::vector<BYTE> &buffer);
+		BOOL retrievePacket(HANDLE handleCom, std::vector<BYTE> &buffer);
+		BOOL parsePacket(Packet &packet, std::vector<BYTE> &buffer);
 		BOOL validatePacket(Packet &packet);
 		void errorStat(HWND hwnd);
+		void packetTimeout();
+		typedef Timer<Reception, &packetTimeout, (DATA_SIZE + CRC_SIZE + 1 / BAUD_RATE)*3> AckTimer;
+		AckTimer packetTimer;
 	public:
 		BOOL start(HWND handleWin, HANDLE handleCom);
 	};
@@ -54,7 +60,7 @@ namespace receive {
 		void successSaveFile();
 		void failToSaveFile();
 	public:
-		void startProcess(HWND &hwnd, BYTE *d);
+		void startProcess(HWND &hwnd, BYTE *data);
 	};
 };
 #endif // !RECEIVE_H
