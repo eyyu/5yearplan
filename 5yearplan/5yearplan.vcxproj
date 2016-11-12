@@ -110,6 +110,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="rx.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="transmission.h" />
   </ItemGroup>
