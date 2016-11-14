@@ -5,11 +5,13 @@
 
 char Name[] = "Wireless communication portal";
 LPCSTR	lpszCommName = "COM5";
+char comPort[10];//Currently selected COMM PORT
 HANDLE hComm;
 char str[80] = "";
 bool connected = false;
 OPENFILENAME ofn;// Structure that contains attachment file info
 char szFile[100];// Memory buffer to contain the file name
+HINSTANCE hInstance;
 
 //Function prototypes
 void generateViews(HINSTANCE, int);
@@ -19,6 +21,8 @@ void connect(HANDLE&, LPCSTR, bool&);
 void disconnect(HANDLE&, bool&, LPCSTR);
 void createUIWindows(HWND);
 void attach(void);
+void availableCOM(HWND);
+INT_PTR CALLBACK comDialogProc(HWND, UINT, WPARAM, LPARAM);
 
 //Window handlers and variables
 static const int WIN_LENGTH = 500;		  // Main window length
