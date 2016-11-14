@@ -1,7 +1,7 @@
 // Program WinMenu.cpp
 // COMP 3980, Final Project
 // Tim Makimov, A009031109
-
+//Test
 #define STRICT
 
 #include "Command.h"
