@@ -27,6 +27,7 @@ namespace transmit {
     class Transmitter {
         std::queue<Packet> outputQueue;
         std::fstream currentFile;
+        int retryCounter = 0;
 
         void ackTimeout();
         typedef Timer<Transmitter, &ackTimeout, (DATA_SIZE + CRC_SIZE + 1 / BAUD_RATE)> AckTimer;
@@ -40,8 +41,9 @@ namespace transmit {
         void addDataToQueue(const std::string& data);
         void addFileToQueue(const LPTSTR& filePath);
         void addFileToQueue(const std::string& filePath);
-        void sendPacket(const Packet& p);
+        void sendPacket(const HANDLE& hComm);
         bool outGoingDataInBuffer() const { return !outputQueue.empty(); };
+        void closeTransmitter();
     };
 
     uint16_t calculateCRC16(const std::string& data);
