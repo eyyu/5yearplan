@@ -110,12 +110,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="rx.h" />
+    <ClInclude Include="Command.h" />
+    <ClInclude Include="Connect.h" />
+    <ClInclude Include="constants.h" />
+    <ClInclude Include="reception.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="transmission.h" />
+    <ClInclude Include="winmenu2.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="reception.cpp" />
     <ClCompile Include="Transmission.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
