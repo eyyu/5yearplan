@@ -8,7 +8,7 @@ struct Packet {
     std::string data;
     uint16_t crc;
 
-    Packet(const std::string& data = std::string(1024, NULL_BYTE)) :
+    Packet(const std::string& data = std::string(DATA_SIZE, NULL_BYTE)) :
         data(data),
         crc(calculateCRC16(data)) {}
 };

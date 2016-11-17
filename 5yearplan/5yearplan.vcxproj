@@ -121,6 +121,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Packet.cpp" />
     <ClCompile Include="reception.cpp" />
     <ClCompile Include="Transmission.cpp" />
   </ItemGroup>
