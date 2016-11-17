@@ -1,7 +1,7 @@
 // Program WinMenu.cpp
 // COMP 3980, Final Project
 // Tim Makimov, A009031109
-//Test
+
 #define STRICT
 
 #include "Command.h"
@@ -13,6 +13,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
 	LPSTR lspszCmdParam, int nCmdShow)
 {
 	MSG Msg;
+	hInstance = hInst;
 	generateViews(hInst, nCmdShow);
 	while (GetMessage(&Msg, NULL, 0, 0))
 	{
@@ -28,18 +29,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	HDC hdc = NULL;
 	PAINTSTRUCT paintstruct;
 
+	//availableCOM(hwnd);
+
 	switch (Message)
 	{
 	case WM_COMMAND:
 
 		if ((HWND)lParam == hConnectButton)
 		{
-			connect(hComm, lpszCommName, connected);
+			connect(hComm, comPort, connected);
 			break;
 		}
 		if ((HWND)lParam == hDisconnectButton)
 		{
-			disconnect(hComm, connected, lpszCommName);
+			disconnect(hComm, connected, comPort);
 			break;
 		}
 		if ((HWND)lParam == browse)
@@ -49,22 +52,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		}
 		switch (LOWORD(wParam))
 		{
-		case IDM_COM1:
-			lpszCommName = "COM1";
-			selectCommPort(hComm, lpszCommName, hwnd, connected);
+		case IDM_NEWCONNECT:
+			DialogBox(hInstance, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc); // a dialog for the list of available com port.
 			break;
-		case IDM_COM2:
-			lpszCommName = "COM2";
-			selectCommPort(hComm, lpszCommName, hwnd, connected);
+
+		case IDM_PROPERTIES: // popup a dialog for changing the properties of selected com port.
+			selectCommPort(hComm, comPort, hwnd, connected);
 			break;
-		case IDM_COM3:
-			lpszCommName = "COM3";
-			selectCommPort(hComm, lpszCommName, hwnd, connected);
-			break;
-		case IDM_COM4:
-			lpszCommName = "COM4";
-			selectCommPort(hComm, lpszCommName, hwnd, connected);
-			break;
+
 		case IDM_HELP:
 			MessageBox(NULL, 
 					"Click CONNECT to connect to the default COMM port or select a COMM port from settings and then click CONNECT.", 
@@ -130,9 +125,11 @@ void generateViews(HINSTANCE hInst, int nCmdShow)
 						NULL, //menu bar
 						hInst, // first aparam in WinMain
 						NULL);
+	
 	ShowWindow(hwnd, nCmdShow);
 	UpdateWindow(hwnd);
 	createUIWindows(hwnd);
+	DialogBox(hInstance, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc); // a dialog for the list of available com port.
 }
 
 void selectCommPort(HANDLE hComm, LPCSTR lpszCommName, HWND hwnd, bool &connected)
@@ -272,6 +269,7 @@ void createUIWindows(HWND hwnd)
 	);
 }
 
+
 void attach()
 {
 	// open a file name
@@ -287,12 +285,61 @@ void attach()
 	ofn.nMaxFileTitle = 0;
 	ofn.lpstrInitialDir = NULL;
 	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER | OFN_ENABLEHOOK;
-	
+
 	if (GetOpenFileName(&ofn))
 	{
-		// Now simpley display the file name 
-		MessageBox(NULL, ofn.lpstrFile, "File Name", MB_OK);
+		filePath = ofn.lpstrFile;
+		
+		// Now simply display the file name 
+		MessageBox(NULL, filePath, "File Name", MB_OK);
 	}
-
-	
 }
+
+void availableCOM(HWND hwnd) {
+	TCHAR szDevices[65535];
+	unsigned long dwChars = QueryDosDevice(NULL, szDevices, 65535); // get all available devices.
+	TCHAR *ptr = szDevices;
+
+	while (dwChars)
+	{
+		int port;
+		if (sscanf_s(ptr, "COM%d", &port) == 1 || sscanf_s(ptr, "\\\\.\\COM%d", &port) == 1) // if the availbel device name begins with COM,
+		{
+			SendDlgItemMessage(hwnd, IDM_COM_COMBOBOX, CB_ADDSTRING, 0, (LPARAM)ptr); // populates the combobox with the device name.
+		}
+		TCHAR *temp_ptr = strchr(ptr, 0);
+		dwChars -= (DWORD)((temp_ptr - ptr) / sizeof(TCHAR) + 1);
+		ptr = temp_ptr + 1; // point to next device.
+	}
+	SendDlgItemMessage(hwnd, IDM_COM_COMBOBOX, CB_SETCURSEL, (WPARAM)0, 0L); // set focus on the first item in the list.
+}
+
+
+INT_PTR CALLBACK comDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+	switch (message) {
+	case WM_INITDIALOG:
+		availableCOM(hDlg); // Check the list of available com ports and populate the combobox with it.
+		break;
+
+	case WM_COMMAND:
+		switch (wParam) {
+		case IDM_CANCEL:
+			EndDialog(hDlg, 0); // close dialog
+			return TRUE;
+		case IDM_OK:
+			GetDlgItemText(hDlg, IDM_COM_COMBOBOX, comPort, sizeof(comPort)); // get selected port name from the list.
+			//session.initilize(comPort); // initilize the session for the selected com port.
+			EndDialog(hDlg, 0); // close dialog
+			return TRUE;
+		}
+		break;
+
+	case WM_SETFOCUS:
+		return TRUE;
+	}
+	return FALSE;
+}
+
+//void selectComport() {
+//	DialogBox(hInst, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc); // a dialog for the list of available com port.
+//}
