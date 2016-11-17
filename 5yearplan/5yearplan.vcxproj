@@ -113,6 +113,7 @@
     <ClInclude Include="Command.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="packet.h" />
     <ClInclude Include="reception.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="transmission.h" />
