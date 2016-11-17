@@ -10,7 +10,8 @@ HANDLE hComm;
 char str[80] = "";
 bool connected = false;
 OPENFILENAME ofn;// Structure that contains attachment file info
-char szFile[100];// Memory buffer to contain the file name
+char szFile[100];
+LPTSTR filePath;//String that holds path of the browsed file
 HINSTANCE hInstance;
 
 //Function prototypes
