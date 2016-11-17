@@ -3,6 +3,7 @@
 #include <thread>
 #include <random>
 #include <chrono>
+#include <condition_variable>
 
 /*
 Timer classes here take an unsigned long representing the number of milliseconds the timer will count for
@@ -11,15 +12,39 @@ Timer classes here take an unsigned long representing the number of milliseconds
 template<typname T, void (T::*ev)()>
 class TimerBase {
 protected:
-    std::thread thr;
-    //Used in sleep_for in C++11
-    std::chrono::duration<unsigned long, std::milli> dur;
+    std::thread thread;
+    std::mutex mutex;
+    std::condition_variable cv;
     bool active = false;
+    std::chrono::duration<unsigned long, std::milli> dur;
 public:
-    Timer() = 0;
-    void start() = 0;
-    void stop() = 0;
-    void reset() = 0;
+    virtual Timer() = 0;
+    void start() {
+        stop();
+        {
+            auto lock = std::unique_lock<auto>(mutex);
+            active = true;
+        }
+        thread = std::thread([&] {
+            auto lock = std::unique_lock<auto>(mutex);
+            while (active) {
+                auto result = cv.wait_for(lock, dur);
+                if (result == std::cv_status::timeout) {
+                    ev();
+                }
+            }
+        });
+    }
+    virtual void stop() {
+        {
+            auto lock = std::unique_lock<auto>(mutex);
+            active = false;
+        }
+        cv.notify_one();
+        if (thread.joinable) {
+            thread.join();
+        }
+    }
 };
 
 //Default timer with member function pointer
@@ -27,17 +52,6 @@ template<typename T, void (T::*ev)(), unsigned long duration>
 class Timer : TimerBase<T, T::*ev> {
 public:
     Timer() : dur(duration) {}
-
-    void stop() {
-        if (!active) {
-            return;
-        }
-    }
-
-    void reset() {
-        stop();
-        active = false;
-    }
 };
 
 //Random timer with member function pointer
@@ -53,16 +67,8 @@ class Timer : TimerBase<T, T::*ev> {
 
 public:
     Timer() : dur(getRandDuration()) {}
-
     void stop() {
-        if (!active) {
-            return;
-        }
-    }
-
-    void reset() {
-        stop();
-        active = false;
+        TimerBase<T, T::*ev>::stop();
         dur = getRandDuration();
     }
 };
