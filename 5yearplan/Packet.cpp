@@ -5,14 +5,12 @@
 #include "constants.h"
 #include "packet.h"
 
-
 bool validateCRC(const Packet& p) {
     return validateCRC(p.data, p.crc);
 }
 
 bool validateCRC(const std::string& data, const uint16_t crc) {
-    //Temp until method is fleshed out
-    return false;
+    return !(calculateCRC16(data) - crc);
 }
 
 /*

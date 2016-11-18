@@ -14,8 +14,7 @@
 using namespace transmit;
 
 void Transmitter::addDataToQueue(const std::string& data) {
-    std::vector<std::string> dataChunks = packetizeData(data);
-    for (const auto& content : dataChunks) {
+    for (const auto& content : packetizeData(data)) {
         outputQueue.push(buildPacket(content));
     }
 }

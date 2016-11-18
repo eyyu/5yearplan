@@ -60,10 +60,10 @@ template<typename T, void(T::*ev)(), unsigned long minDuration, unsigned long ma
 class Timer : TimerBase<T, T::*ev> {
     std::random_device rd;     // only used once to initialise (seed) engine
     std::mt19937_64 randEng{rd()}; //Predefined 64 bit random engine
-    std::uniform_int_distribution<long> uni{minDuration, maxDuration}; // guaranteed unbiased
+    std::uniform_int_distribution<unsigned long> uni{minDuration, maxDuration}; // guaranteed unbiased
 
     unsigned long getRandDuration() {
-        return std::abs(uni(randEng));
+        return uni(randEng);
     }
 
 public:
