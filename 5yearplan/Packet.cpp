@@ -5,6 +5,15 @@
 #include "constants.h"
 #include "packet.h"
 
+std::string Packet::getOutputString() const {
+    std::string rtn;
+    rtn.push_back(this->syn);
+    rtn.append(this->data);
+    rtn.push_back(this->crc & 0xFF00);
+    rtn.push_back(this->crc & 0x00FF);
+    return rtn;
+}
+
 bool validateCRC(const Packet& p) {
     return validateCRC(p.data, p.crc);
 }

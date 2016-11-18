@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <iostream>
 #include "constants.h"
 
 struct Packet {
@@ -11,6 +12,8 @@ struct Packet {
     Packet(const std::string& data = std::string(DATA_SIZE, NULL_BYTE)) :
         data(data),
         crc(calculateCRC16(data)) {}
+
+    std::string getOutputString() const;
 };
 
 uint16_t calculateCRC16(const std::string& data);

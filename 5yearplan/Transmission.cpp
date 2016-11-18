@@ -5,6 +5,7 @@
 #include <bitset>
 #include <iostream>
 #include <iterator>
+#include <windows.h>
 
 #include "timer.h"
 #include "transmission.h"
@@ -52,4 +53,16 @@ void Transmitter::addFileToQueue(const std::string& filePath) {
     }
     std::string fileContents{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     Transmitter::addDataToQueue(fileContents);
+}
+
+void Transmitter::sendPacket(const HANDLE& hComm) {
+    if (outputQueue.empty()) {
+        //Error, tried to send packet that doesn't exist
+        throw std::runtime_error("Tried to send a packet from an empty queue");
+    }
+    std::string data = outputQueue.front().getOutputString();
+    //Overlapped struct goes in last parameter to writefile call
+    WriteFile(hComm, &data, data.size(), nullptr, nullptr);
+    outputQueue.pop();
+    ackTimer.start();
 }

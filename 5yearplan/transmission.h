@@ -18,7 +18,7 @@ namespace transmit {
         int retryCounter = 0;
 
         void ackTimeout();
-        typedef Timer<Transmitter, &ackTimeout, (PACKET_SIZE / BAUD_RATE)> AckTimer;
+        typedef Timer<Transmitter, &ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
         AckTimer ackTimer;
 
         std::vector<std::string> packetizeData(const std::string& data, const bool addEmptyData = false) const;

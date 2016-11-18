@@ -50,14 +50,14 @@ public:
 
 //Default timer
 template<typename T, void (T::*ev)(), unsigned long duration>
-class Timer : TimerBase<T, T::*ev> {
+class Timer : public TimerBase<T, T::*ev> {
 public:
     Timer() : dur(duration) {}
 };
 
 //Random timer
 template<typename T, void(T::*ev)(), unsigned long minDuration, unsigned long maxDuration>
-class Timer : TimerBase<T, T::*ev> {
+class Timer : public TimerBase<T, T::*ev> {
     std::random_device rd;     // only used once to initialise (seed) engine
     std::mt19937_64 randEng{rd()}; //Predefined 64 bit random engine
     std::uniform_int_distribution<unsigned long> uni{minDuration, maxDuration}; // guaranteed unbiased
@@ -68,7 +68,7 @@ class Timer : TimerBase<T, T::*ev> {
 
 public:
     Timer() : dur(getRandDuration()) {}
-    void stop() {
+    void stop() override {
         TimerBase<T, T::*ev>::stop();
         dur = getRandDuration();
     }
