@@ -2,29 +2,15 @@
 #ifndef RECEIVE_H
 #define RECEIVE_H
 
-#define SYN_SIZE 1
-#define DATA_SIZE 1024
-#define CRC_SIZE 2
-#define BAUD_RATE 9600
-#define SYN 0x16
-#define ACK 0x06
-#define NULL_BYTE 0x00
-
 #include <windows.h>
 #include <vector>
 #include <string>
 #include <queue>
 #include "timer.h"
+#include "constants.h"
+#include "packet.h"
 
 namespace receive {
-
-
-	struct Packet {
-		BYTE syn;
-		BYTE data[DATA_SIZE];
-		BYTE crc[CRC_SIZE];
-	};
-
 	class Reception {
 	private:
 		DWORD packetCounter;
