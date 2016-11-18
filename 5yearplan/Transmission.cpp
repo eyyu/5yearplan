@@ -4,6 +4,7 @@
 #include <sstream>
 #include <bitset>
 #include <iostream>
+#include <iterator>
 
 #include "timer.h"
 #include "transmission.h"
@@ -38,4 +39,18 @@ std::vector<std::string> Transmitter::packetizeData(const std::string& data, con
         dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
     }
     return dataChunks;
+}
+
+void Transmitter::addFileToQueue(const LPTSTR& filePath) {
+    Transmitter::addFileToQueue(std::string(filePath));
+}
+
+void Transmitter::addFileToQueue(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file) {
+        //File opening error
+        throw std::runtime_error("File cannot be opened");
+    }
+    std::string fileContents{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    Transmitter::addDataToQueue(fileContents);
 }
