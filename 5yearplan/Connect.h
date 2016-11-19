@@ -22,26 +22,34 @@
 #pragma once
 
 #include <thread>
-#include <Win32>
+#include <Windows.h>
+
+#include "transmission.h"
+#include "reception.h"
 #include "timer.h"
 
-namespace Connect{
+
+namespace connect{
 
    //Default timer with member function pointer
     class Connection {
     private: 
-        static const int IDLE_TIMER      = 500 ; // in ms
-        static const int RAN_TIMER_START = 0 ; // in ms
-        static const int RAN_TIMER_STOP  = 100 ; // in ms
-
-        //std::thread readThread;
-        //std::thread writeThread;
-        Timer <Connection, & enqLine, RAN_TIMER_START, RAN_TIMER_STOP> randomEnqTimer;
-        Timer <Connection, & startRandomEnqTimer , IDLE_STATE_TIME > idleStateTimer;
+        static const int			MAX_ENQ_COUNT	= 3 ; // in ms
+        static const int			BUFF_SIZE		= 1027; // in ms
+        static const unsigned long  RAN_TIMER_MIN = 0; // in ms
+        static const unsigned long  RAN_TIMER_MAX  = 100; // in ms
+		static const unsigned long  IDLE_STATE_TIME = 500; // (2/9600)s ; measure in in MicroSec
+       
+        int              enqCount;
+        CHAR   inBuffer[BUFF_SIZE];
+        HANDLE hWrite;
+        HANDLE hRead;
         
-        Transmit::Transmitter   TX;
-        /****REPLACE WITH RX OBJECT!!!****/
-        Recieve::Reception      RX;
+        std::thread readThread;
+        std::thread writeThread;
+        
+		transmit::Transmitter   TX;
+        receive::Reception      RX;
 
         void readInBuffer(); // event driven
         void enqLine();
@@ -50,8 +58,12 @@ namespace Connect{
         //  
         void startRx(HWND hDisplay, HANDLE hcomm);
         void startRandomEnqTimer();
+        void stopRandomEnqTimer();
         void startIdleStateTimer();
+        void stopIdleStateTimer();
 
+		Timer <Connection, &enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer;
+		Timer <Connection, &startRandomEnqTimer, IDLE_STATE_TIME > idleStateTimer;
     public:
         Connection();
         bool startConnnection(LPCTSTR commPortAddress);
