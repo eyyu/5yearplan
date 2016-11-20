@@ -2,30 +2,24 @@
 
 using namespace receive;
 
-BOOL Reception::start(HWND handleWin, HANDLE handleCom) {
+BOOL Reception::start(HWND handleDisplay, HWND handleStat, HANDLE handleCom) {
 	Packet packet;
 	std::vector<BYTE> buffer;
-
-	// instance an object of COMMTIMEOUTS.
-	COMMTIMEOUTS comTimeOut;
-	// Specify time-out between charactor for receiving.
-	comTimeOut.ReadIntervalTimeout = MAXWORD;
-	// Specify value that is multiplied 
-	// by the requested number of bytes to be read. 
-	comTimeOut.ReadTotalTimeoutMultiplier = 0;
-	// Specify value is added to the product of the 
-	// ReadTotalTimeoutMultiplier member
-	comTimeOut.ReadTotalTimeoutConstant = 0;
-	SetCommTimeouts(handleCom, &comTimeOut);
-
 	sendACK(handleCom);
-	while (waitForPacket(handleCom, buffer)) {
+	while (waitForPacket(handleCom)) {
 		if (retrievePacket(handleCom, buffer)) {
-			if (parsePacket(packet,buffer) && validatePacket(packet)) {
-				process.startProcess(handleWin, packet.data);
+			if (!parsePacket(packet, buffer))
+				continue;
+			if (validatePacket(packet)) {
+				process.startProcess(handleDisplay, packet.data);
+				sendACK(handleCom);
+				return true;
 			}
+			else
+				errorStat(handleDisplay);
 		}
 	}
+	return false;
 }
 
 void Reception::sendACK(HANDLE handleCom) {
@@ -33,32 +27,31 @@ void Reception::sendACK(HANDLE handleCom) {
 	DWORD dwWritten;
 	DWORD ackFailCounter = 0;
 	// Issue write.
-	while (!WriteFile(handleCom, &ch, 1, &dwWritten, NULL)) {
-		ackFailCounter++;
-	}
+	WriteFile(handleCom, &ch, 1, &dwWritten, NULL);
 }
-BOOL Reception::waitForPacket(HANDLE handleCom, std::vector<BYTE> &buffer) {
-	packetTimer.reset();
+BOOL Reception::waitForPacket(HANDLE handleCom) {
 	packetTimer.start();
-	DWORD dwRead;
-	char  chRead;
+	DWORD dwCommEvent;
 	isPacketTimedOut = false;
 	BOOL result = false;
-	while (!isPacketTimedOut) {
-		if (ReadFile(handleCom, &chRead, 1, &dwRead, NULL)) {
-			buffer.push_back(chRead);
+	if (!SetCommMask(handleCom, EV_RXCHAR)) // Set event listener for RX_CHAR, occurs when a message comes from the port.
+		MessageBox(NULL, "SetCommMask", "Error", MB_OK | MB_ICONINFORMATION);
+
+	while(isPacketTimedOut){ // if isPacketTimedOut is false, stop wating.
+		if (WaitCommEvent(handleCom, &dwCommEvent, NULL)) { // wait for RXCHAR event.
 			result = true;
 			break;
 		}
 	}
 	packetTimer.stop();
-	return false;
+	return result;
 };
 
 BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<BYTE> &buffer) {
 	DWORD dwRead;
 	char  chRead;
 	buffer.clear();
+
 	do {
 		if (ReadFile(handleCom, &chRead, 1, &dwRead, NULL))
 			buffer.push_back(chRead);
@@ -66,24 +59,44 @@ BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<BYTE> &buffer) {
 			break;
 	} while (dwRead);
 
-	if (buffer.size() != SYN_SIZE + DATA_SIZE + CRC_SIZE)
+
+	/*
+	auto syn_pos = std::find(buffer.begin(), buffer.end(), SYN);
+	if (syn_pos == buffer.end())
 		return false;
 
+	buffer.erase(buffer.begin(), syn_pos);
+	*/
+
+	if (buffer.size() != PACKET_SIZE)
+		return false;
+
+	packetCounter++;
+
+	return true;
 }
-BOOL Reception::parsePacket(Packet &packet, std::vector<BYTE> &buffer) {
-	copy(buffer.begin(), buffer.begin() + SYN_SIZE, packet.syn);
-	copy(buffer.begin() + SYN_SIZE, buffer.begin() + DATA_SIZE + SYN_SIZE, packet.data);
-	copy(buffer.begin() + DATA_SIZE + SYN_SIZE, buffer.end(), packet.crc);
 
-	if (packet.syn != SYN)
+BOOL Reception::parsePacket(Packet &packet, std::vector<BYTE> &buffer) {
+	if (buffer[0] != SYN)
 		return false;
+
+	packet.data = std::string(buffer.begin() + 1, buffer.begin() + DATA_SIZE + 1);
+
+	char crc[2];
+	copy(buffer.begin() + DATA_SIZE + 1, buffer.end(), crc);
+	packet.crc = 0;
+
+	for (size_t i = 0; i < 2; ++i) {
+		packet.crc += crc[i] << 8 * i;
+	}
+
 	return true;
 }
 BOOL Reception::validatePacket(Packet &packet) {
-
+	return validateCRC(packet);
 }
-void Reception::errorStat(HWND hwnd) {
-
+void Reception::errorStat(HWND handleDisplay) {
+	errorCounter++;
 }
 void Reception::packetTimeout() {
 	isPacketTimedOut = true;
@@ -96,9 +109,8 @@ void Reception::packetTimeout() {
 
 
 
-
-
-void  Process::startProcess(HWND &hwnd, BYTE *data) {
+void  Process::startProcess(HWND handleDisplayParam, std::string &data) {
+	handleDisplay = handleDisplayParam;
 	dataQueue.push(data);
 	if (!isProcessing)
 		processThread = CreateThread(NULL, 0, readCharacters, this, 0, &threadId);
@@ -109,9 +121,10 @@ DWORD WINAPI Process::readCharacters(LPVOID param) {
 
 	thisObj->isProcessing = true;
 	while (!thisObj->dataQueue.empty()) {
-		BYTE *data = thisObj->dataQueue.front();
+		std::string &data = thisObj->dataQueue.front();
 		for (int i = 0; i < DATA_SIZE; i++) {
-			thisObj->handleChar(data[i]);
+			if (!thisObj->handleChar(data[i]))
+				break;
 		}
 	}
 	thisObj->isProcessing = false;
@@ -132,15 +145,50 @@ BOOL Process::handleChar(char c) {
 	return false;
 }
 void Process::writeCharToBuffer(char c) {
-		writeBuffer.push_back(c);
+	writeBuffer.push_back(c);
 }
-
 BOOL Process::saveBufferToFile() {
 	return true;
 }
 void Process::successSaveFile() {
-
+	cls();
 }
 void Process::failToSaveFile() {
+	cls();
+}
 
+void Process::displayChar(char c) {
+	HDC hdc; // handle for device contect
+	SIZE sz; // size of charcter
+	hdc = GetDC(handleDisplay);			 // get device context
+
+	GetTextExtentPoint32(hdc, &c, 1, &sz); // get the size of current character.
+
+	if(c == '\n' || char_x >= TEXTBOX_WIDTH - 20) { // if x position is past the window,
+		char_y += sz.cy; // increse y position.
+		char_x = 0; // set x position to leftmost
+	}
+	TextOut(hdc, char_x, char_y, &c, 1); // display character on window
+	char_x += sz.cx; // increase x position by the current character's width
+
+	ReleaseDC(handleDisplay, hdc); // Release device context
+}
+void Process::cls() {
+	HDC hdc; // handle for device contect
+	SIZE sz; // size of charcter
+	hdc = GetDC(handleDisplay);			 // get device context
+	int x = 0, y = 0;
+	char space = ' ';
+	while (y < TEXTBOX_HEIGTH) {
+		while (x < TEXTBOX_WIDTH) {
+			TextOut(hdc, x, y, &space, 1); // display character on window
+			GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
+			x += sz.cx;
+		}
+		GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
+		y += sz.cy;
+		x = 0;
+	}
+	ReleaseDC(handleDisplay, hdc); // Release device context
+	char_x = char_y = 0;
 }
