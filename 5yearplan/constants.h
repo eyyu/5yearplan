@@ -8,3 +8,4 @@ static constexpr int DATA_SIZE = 1024;
 static constexpr int CRC_SIZE = 2;
 static constexpr int PACKET_SIZE = 1 + DATA_SIZE + CRC_SIZE;
 static constexpr int BAUD_RATE = 9600;
+static constexpr int MAX_RETRIES = 2;

@@ -57,13 +57,55 @@ void Transmitter::addFileToQueue(const std::string& filePath) {
 }
 
 void Transmitter::sendPacket(const HANDLE& hComm) {
+    timeoutReached = false;
+    OVERLAPPED over = {0};
+    over.hEvent = CreateEvent(nullptr, false, false, nullptr);
+    SetCommMask(hComm, EV_RXCHAR);
+
     if (outputQueue.empty()) {
         //Error, tried to send packet that doesn't exist
         throw std::runtime_error("Tried to send a packet from an empty queue");
     }
+
     std::string data = outputQueue.front().getOutputString();
     //Overlapped struct goes in last parameter to writefile call
-    WriteFile(hComm, &data, data.size(), nullptr, nullptr);
-    outputQueue.pop();
+    WriteFile(hComm, &data, data.size(), nullptr, &over);
     ackTimer.start();
+
+    std::string buf;
+    DWORD success;
+
+    while (true) {
+        while (!timeoutReached) {
+            if (WaitCommEvent(hComm, nullptr, &over)) {
+                ReadFile(hComm, &buf, 1, &success, &over);
+                if (success && buf.front() == ACK) {
+                    ackTimer.stop();
+                    break;
+                }
+            }
+        }
+
+        ackTimer.stop();
+
+        if (timeoutReached) {
+            retryCounter++;
+            if (retryCounter > MAX_RETRIES) {
+                closeTransmitter();
+                return;
+            }
+            WriteFile(hComm, &data, data.size(), nullptr, &over);
+            ackTimer.start();
+        } else {
+            break;
+        }
+    }
+    outputQueue.pop();
+}
+
+void Transmitter::closeTransmitter() {
+    retryCounter = 0;
+    while (!outputQueue.empty()) {
+        outputQueue.pop();
+    }
 }

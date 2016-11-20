@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <windows.h>
+#include <atomic>
 
 #include "packet.h"
 #include "constants.h"
@@ -13,11 +14,12 @@
 
 namespace transmit {
     class Transmitter {
+        static std::atomic_bool timeoutReached;
+        static void ackTimeout();
+
         std::queue<Packet> outputQueue;
-        std::fstream currentFile;
         int retryCounter = 0;
 
-        static void ackTimeout();
         typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
         AckTimer ackTimer;
 
