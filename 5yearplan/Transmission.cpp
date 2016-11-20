@@ -109,3 +109,8 @@ void Transmitter::closeTransmitter() {
         outputQueue.pop();
     }
 }
+
+
+void Transmitter::ackTimeout() {
+    timeoutReached = true;
+}
