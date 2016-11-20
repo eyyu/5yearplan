@@ -37,7 +37,7 @@ uint16_t calculateCRC16(const std::string& data) {
 
     int i = 0;
     while (size > 0) {
-        bit_flag = out >> 15;
+        bit_flag = (out >> 15) != 0;
 
         /* Get next bit: */
         // item a) work from the least significant bits
@@ -58,7 +58,7 @@ uint16_t calculateCRC16(const std::string& data) {
 
     // item b) "push out" the last 16 bits
     for (int i = 0; i < 16; ++i) {
-        out = (out << 1) ^ (poly * static_cast<bool>(out >> 15));
+        out = (out << 1) ^ (poly * ((out >> 15) != 0));
     }
 
     // item c) reverse the bits

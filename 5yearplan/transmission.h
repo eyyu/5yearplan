@@ -17,11 +17,11 @@ namespace transmit {
         std::fstream currentFile;
         int retryCounter = 0;
 
-        void ackTimeout();
-        typedef Timer<Transmitter, &ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
+        static void ackTimeout();
+        typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
         AckTimer ackTimer;
 
-        std::vector<std::string> packetizeData(const std::string& data, const bool addEmptyData = false) const;
+        std::vector<std::string> packetizeData(const std::string& data) const;
         Packet buildPacket(const std::string& data) const;
 
     public:

@@ -24,9 +24,12 @@ Packet Transmitter::buildPacket(const std::string & data) const {
     return Packet(data);
 }
 
-std::vector<std::string> Transmitter::packetizeData(const std::string& data, const bool addEmptyPacket) const {
+std::vector<std::string> Transmitter::packetizeData(const std::string& data) const {
     const size_t packetNum = data.length() / DATA_SIZE;
     std::vector<std::string> dataChunks;
+
+    //Starting packet to be implemented when character is chosen
+    //dataChunks.emplace_back(DATA_SIZE, START_BYTE);
 
     for (size_t i = 0; i < packetNum; ++i) {
         dataChunks.emplace_back(data, i * DATA_SIZE, DATA_SIZE);
@@ -35,9 +38,7 @@ std::vector<std::string> Transmitter::packetizeData(const std::string& data, con
         std::string remaining = data.substr(packetNum * DATA_SIZE);
         dataChunks.push_back(remaining.append(DATA_SIZE - remaining.length(), NULL_BYTE));
     }
-    if (addEmptyPacket) {
-        dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
-    }
+    dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
     return dataChunks;
 }
 
