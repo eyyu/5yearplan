@@ -28,8 +28,7 @@ std::vector<std::string> Transmitter::packetizeData(const std::string& data) con
     const size_t packetNum = data.length() / DATA_SIZE;
     std::vector<std::string> dataChunks;
 
-    //Starting packet to be implemented when character is chosen
-    //dataChunks.emplace_back(DATA_SIZE, START_BYTE);
+    dataChunks.emplace_back(DATA_SIZE, DC1);
 
     for (size_t i = 0; i < packetNum; ++i) {
         dataChunks.emplace_back(data, i * DATA_SIZE, DATA_SIZE);
@@ -37,8 +36,9 @@ std::vector<std::string> Transmitter::packetizeData(const std::string& data) con
     if (data.length() % DATA_SIZE) {
         std::string remaining = data.substr(packetNum * DATA_SIZE);
         dataChunks.push_back(remaining.append(DATA_SIZE - remaining.length(), NULL_BYTE));
+    } else {
+        dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
     }
-    dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
     return dataChunks;
 }
 
