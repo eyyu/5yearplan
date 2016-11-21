@@ -4,6 +4,7 @@ static constexpr unsigned char NULL_BYTE = 0x00;
 static constexpr unsigned char ENQ = 0x05;
 static constexpr unsigned char ACK = 0x06;
 static constexpr unsigned char SYN = 0x16;
+static constexpr unsigned char DC1 = 0x11;
 static constexpr int DATA_SIZE = 1024;
 static constexpr int CRC_SIZE = 2;
 static constexpr int PACKET_SIZE = 1 + DATA_SIZE + CRC_SIZE;
