@@ -1,7 +1,17 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <iostream>
+
 #include "constants.h"
+
+struct Packet;
+
+uint16_t calculateCRC16(const std::string& data);
+
+bool validateCRC(const Packet& p);
+bool validateCRC(const std::string& data, const uint16_t crc);
+
 
 struct Packet {
     static constexpr unsigned char syn = SYN;
@@ -11,9 +21,6 @@ struct Packet {
     Packet(const std::string& data = std::string(DATA_SIZE, NULL_BYTE)) :
         data(data),
         crc(calculateCRC16(data)) {}
+
+    std::string getOutputString() const;
 };
-
-uint16_t calculateCRC16(const std::string& data);
-
-bool validateCRC(const Packet& p);
-bool validateCRC(const std::string& data, const uint16_t crc);

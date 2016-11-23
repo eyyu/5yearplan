@@ -22,40 +22,48 @@
 #pragma once
 
 #include <thread>
-#include <Win32>
+#include <Windows.h>
+
+#include "constants.h"
+#include "transmission.h"
+#include "reception.h"
 #include "timer.h"
 
-namespace Connect{
 
-   //Default timer with member function pointer
-    class Connection {
-    private: 
-        static const int IDLE_TIMER      = 500 ; // in ms
-        static const int RAN_TIMER_START = 0 ; // in ms
-        static const int RAN_TIMER_STOP  = 100 ; // in ms
+	static constexpr unsigned long  RAN_TIMER_MIN = 0; // in ms
+	static constexpr unsigned long  RAN_TIMER_MAX = 100; // in ms
+	static constexpr unsigned long  IDLE_STATE_TIME = 500; //ms
 
-        //std::thread readThread;
-        //std::thread writeThread;
-        Timer <Connection, & enqLine, RAN_TIMER_START, RAN_TIMER_STOP> randomEnqTimer;
-        Timer <Connection, & startRandomEnqTimer , IDLE_STATE_TIME > idleStateTimer;
-        
-        Transmit::Transmitter   TX;
-        /****REPLACE WITH RX OBJECT!!!****/
-        Recieve::Reception      RX;
 
-        void readInBuffer(); // event driven
-        void enqLine();
-        void startTx();
-        //three handles: one for displaying data , one stats , handle to comm port 
-        //  
-        void startRx(HWND hDisplay, HANDLE hcomm);
-        void startRandomEnqTimer();
-        void startIdleStateTimer();
+		int		enqCount = 0;
+		bool	isConnected = false;
+		bool	isReading = false;
+		bool	isWriting = false;
+		bool	isWaitingForPacket = false;
+		bool	isWaitingForAck = false;
+		int	    packetCount = 0;
 
-    public:
-        Connection();
-        bool startConnnection(LPCTSTR commPortAddress);
-        bool stopConnnection();
-    };
+		HANDLE  hComm = NULL;
 
-}
+		std::thread connectedThread;
+
+		transmit::Transmitter   TX;
+		receive::Reception      RX;
+
+		bool startConnectProc(HWND, HWND);
+
+		bool startConnnection(LPCTSTR, HWND);
+		bool stopConnnection();
+		bool sendNewFile(LPCSTR);
+		bool sendNewData(LPCSTR);
+		bool writeChar(const char);
+
+		int  getEnqCount();
+		void incrementEnqCount();
+		void resetEnqCount();
+
+		void enqLine();
+		void startRandomEnqTimer();
+
+	Timer < &enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer ;
+	Timer < &startRandomEnqTimer, IDLE_STATE_TIME > idleStateTimer ;

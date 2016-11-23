@@ -5,14 +5,21 @@
 #include "constants.h"
 #include "packet.h"
 
+std::string Packet::getOutputString() const {
+    std::string rtn;
+    rtn.push_back(this->syn);
+    rtn.append(this->data);
+    rtn.push_back(this->crc & 0xFF00);
+    rtn.push_back(this->crc & 0x00FF);
+    return rtn;
+}
 
 bool validateCRC(const Packet& p) {
     return validateCRC(p.data, p.crc);
 }
 
 bool validateCRC(const std::string& data, const uint16_t crc) {
-    //Temp until method is fleshed out
-    return false;
+    return !(calculateCRC16(data) - crc);
 }
 
 /*
@@ -30,7 +37,7 @@ uint16_t calculateCRC16(const std::string& data) {
 
     int i = 0;
     while (size > 0) {
-        bit_flag = out >> 15;
+        bit_flag = (out >> 15) != 0;
 
         /* Get next bit: */
         // item a) work from the least significant bits
@@ -51,7 +58,7 @@ uint16_t calculateCRC16(const std::string& data) {
 
     // item b) "push out" the last 16 bits
     for (int i = 0; i < 16; ++i) {
-        out = (out << 1) ^ (poly * static_cast<bool>(out >> 15));
+        out = (out << 1) ^ (poly * ((out >> 15) != 0));
     }
 
     // item c) reverse the bits

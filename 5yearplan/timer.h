@@ -9,24 +9,32 @@
 Timer classes here take an unsigned long representing the number of milliseconds the timer will count for
 */
 
-template<typname T, void (T::*ev)()>
-class TimerBase {
-protected:
+//Random timer
+template<void (*ev)(), unsigned long minDuration, unsigned long maxDuration = 100>
+class Timer {
     std::thread thread;
     std::mutex mutex;
     std::condition_variable cv;
     bool active = false;
     std::chrono::duration<unsigned long, std::milli> dur;
+
+    std::mt19937_64 randEng{std::random_device()()}; //Predefined 64 bit random engine using random device value as starting seed
+    std::uniform_int_distribution<unsigned long> uni{minDuration, maxDuration}; // guaranteed unbiased
+
+    unsigned long getRandDuration() {
+        return uni(randEng);
+    }
+
 public:
-    virtual Timer() = 0;
+    Timer() : dur(getRandDuration()) {}
     void start() {
         stop();
         {
-            auto lock = std::unique_lock<auto>(mutex);
+            auto lock = std::unique_lock<std::mutex>(mutex);
             active = true;
         }
         thread = std::thread([&] {
-            auto lock = std::unique_lock<auto>(mutex);
+            auto lock = std::unique_lock<std::mutex>(mutex);
             while (active) {
                 auto result = cv.wait_for(lock, dur);
                 if (result == std::cv_status::timeout) {
@@ -35,40 +43,54 @@ public:
             }
         });
     }
-    virtual void stop() {
+    void stop() {
         {
-            auto lock = std::unique_lock<auto>(mutex);
+            auto lock = std::unique_lock<std::mutex>(mutex);
             active = false;
         }
         cv.notify_one();
-        if (thread.joinable) {
+        if (thread.joinable()) {
             thread.join();
         }
+        dur = std::chrono::duration<unsigned long, std::milli>(getRandDuration());
     }
 };
 
-//Default timer with member function pointer
-template<typename T, void (T::*ev)(), unsigned long duration>
-class Timer : TimerBase<T, T::*ev> {
+//Default timer
+template<void(*ev)(), unsigned long duration>
+class Timer<ev, duration, 0> {
+    std::thread thread;
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool active = false;
+    std::chrono::duration<unsigned long, std::milli> dur;
+
 public:
     Timer() : dur(duration) {}
-};
-
-//Random timer with member function pointer
-template<typename T, void(T::*ev)(), unsigned long minDuration, unsigned long maxDuration>
-class Timer : TimerBase<T, T::*ev> {
-    std::random_device rd;     // only used once to initialise (seed) engine
-    std::mt19937_64 randEng{rd()}; //Predefined 64 bit random engine
-    std::uniform_int_distribution<long> uni{minDuration, maxDuration}; // guaranteed unbiased
-
-    unsigned long getRandDuration() {
-        return std::abs(uni(randEng));
+    void start() {
+        stop();
+        {
+            auto lock = std::unique_lock<std::mutex>(mutex);
+            active = true;
+        }
+        thread = std::thread([&] {
+            auto lock = std::unique_lock<std::mutex>(mutex);
+            while (active) {
+                auto result = cv.wait_for(lock, dur);
+                if (result == std::cv_status::timeout) {
+                    ev();
+                }
+            }
+        });
     }
-
-public:
-    Timer() : dur(getRandDuration()) {}
     void stop() {
-        TimerBase<T, T::*ev>::stop();
-        dur = getRandDuration();
+        {
+            auto lock = std::unique_lock<std::mutex>(mutex);
+            active = false;
+        }
+        cv.notify_one();
+        if (thread.joinable()) {
+            thread.join();
+        }
     }
 };
