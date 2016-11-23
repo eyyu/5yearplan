@@ -7,6 +7,10 @@
 #include "Command.h"
 
 #pragma warning (disable: 4096)
+#pragma comment(linker,"\"/manifestdependency:type='win32' \
+name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
+processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance,
@@ -231,8 +235,8 @@ void createUIWindows(HWND hwnd)
 		"BUTTON",
 		"CONNECT",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
-		50,
-		200,
+		CONNECT_BUTTON_X,
+		CONNECT_BUTTON_Y,
 		BUTTON_WIDTH,
 		BUTTON_HEIGHT,
 		hwnd,
@@ -244,8 +248,8 @@ void createUIWindows(HWND hwnd)
 		"BUTTON",
 		"DISCONNECT",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON | WS_DISABLED,
-		50,
-		250,
+		DISCONNECT_BUTTON_X,
+		DISCONNECT_BUTTON_Y,
 		BUTTON_WIDTH,
 		BUTTON_HEIGHT,
 		hwnd,
@@ -258,8 +262,8 @@ void createUIWindows(HWND hwnd)
 		"BUTTON",
 		"ATTACH",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
-		50,
-		300,
+		ATTACH_BUTTON_X,
+		ATTACH_BUTTON_Y,
 		BUTTON_WIDTH,
 		BUTTON_HEIGHT,
 		hwnd,
