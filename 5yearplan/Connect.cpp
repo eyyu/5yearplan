@@ -73,6 +73,7 @@ bool startConnnection( LPCTSTR commPortAddress , HWND hwnd)
 	isConnected = true;	
 	connectedThread = std::thread(startConnectProc, hwnd , hwnd); // NULL to be replaces with stats Display!!
 	connectedThread.detach(); // run connected threas in background
+	return true;
 }
 
 bool startConnectProc(HWND hDisplay, HWND hwnd)
