@@ -30,50 +30,40 @@
 #include "timer.h"
 
 
-namespace connect {
 	static constexpr unsigned long  RAN_TIMER_MIN = 0; // in ms
 	static constexpr unsigned long  RAN_TIMER_MAX = 100; // in ms
 	static constexpr unsigned long  IDLE_STATE_TIME = 500; //ms
 
-	class Connection {
-	private:
 
-		static bool isConnected;
-		static bool isWaitingForAck;
-		static bool isWaitingForPacket;
-		static bool isReading;
-		static bool isWriting;
+		int		enqCount = 0;
+		bool	isConnected = false;
+		bool	isReading = false;
+		bool	isWriting = false;
+		bool	isWaitingForPacket = false;
+		bool	isWaitingForAck = false;
+		int	    packetCount = 0;
 
-		static int    enqCount;
+		HANDLE  hComm = NULL;
 
-		static HANDLE hComm;
+		std::thread connectedThread;
 
-		static std::thread connectedThread;
+		transmit::Transmitter   TX;
+		receive::Reception      RX;
 
-		static transmit::Transmitter   TX;
-		static receive::Reception      RX;
+		bool startConnectProc(HWND, HWND);
 
-		static bool startConnectProc(HWND, HWND);
+		bool startConnnection(LPCTSTR, HWND);
+		bool stopConnnection();
+		bool sendNewFile(LPCSTR);
+		bool sendNewData(LPCSTR);
+		bool writeChar(const char);
 
-	public:
-		Connection();
-		static bool startConnnection(LPCTSTR, HWND);
-		static bool stopConnnection();
-		static bool sendNewFile(LPCSTR);
-		static bool sendNewData(LPCSTR);
-		static bool writeChar(const char);
+		int  getEnqCount();
+		void incrementEnqCount();
+		void resetEnqCount();
 
-		static int  getEnqCount();
-		static void incrementEnqCount();
-		static void resetEnqCount();
+		void enqLine();
+		void startRandomEnqTimer();
 
-		static void enqLine();
-		static void startRandomEnqTimer();
-
-		
-	};
-	Timer < &Connection::enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer ;
-	Timer < &Connection::startRandomEnqTimer, IDLE_STATE_TIME > idleStateTimer ;
-
-
-}
+	Timer < &enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer ;
+	Timer < &startRandomEnqTimer, IDLE_STATE_TIME > idleStateTimer ;

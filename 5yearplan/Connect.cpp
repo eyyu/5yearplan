@@ -21,17 +21,9 @@
 
 #include "Connect.h"
 
-using namespace connect;
+//using namespace connect;
 
-int		Connection::enqCount = 0;
-bool	Connection::isConnected = false;
-bool	Connection::isReading = false;
-bool	Connection::isWriting = false;
-bool	Connection::isWaitingForPacket = false;
-bool	Connection::isWaitingForAck = false;
-HANDLE  Connection::hComm = NULL;
-
-Connection::Connection()
+/*Connection()
 {
 	/*enqCount = 0;
 	isConnected = false;
@@ -40,16 +32,16 @@ Connection::Connection()
 	isWaitingForPacket = false;
 	isWaitingForAck = false;
 	hComm = NULL;
-	*/
-}
+	}*/
 
-void Connection::startRandomEnqTimer()
+
+void startRandomEnqTimer()
 {
 	randomEnqTimer.start();
 }
 
 // event driven
-void Connection::enqLine()
+void enqLine()
 {
 	if (enqCount >= MAX_RETRIES)
 	{
@@ -60,7 +52,7 @@ void Connection::enqLine()
 	return;
 }
 
-bool Connection::startConnnection( LPCTSTR commPortAddress , HWND hwnd)
+bool startConnnection( LPCTSTR commPortAddress , HWND hwnd)
 {
 
     hComm = CreateFile( commPortAddress,
@@ -79,12 +71,11 @@ bool Connection::startConnnection( LPCTSTR commPortAddress , HWND hwnd)
 	}
 
 	isConnected = true;	
-	connectedThread = std::thread(&startConnectProc, hwnd, NULL); // NULL to be replaces with stats Display!!
+	connectedThread = std::thread(startConnectProc, hwnd , hwnd); // NULL to be replaces with stats Display!!
 	connectedThread.detach(); // run connected threas in background
-	
 }
 
-bool Connection::startConnectProc(HWND hDisplay, HWND hwnd)
+bool startConnectProc(HWND hDisplay, HWND hwnd)
 {
 	char inBuff[PACKET_SIZE];
 	DWORD nBytesRead, dwEvent, dwError;
@@ -139,8 +130,15 @@ bool Connection::startConnectProc(HWND hDisplay, HWND hwnd)
 							writeChar(ACK);
 							if (isWaitingForPacket)
 							{
-								RX.start(hDisplay, hwnd, hComm);
-								isWaitingForPacket = false;
+								if (packetCount < MAX_RETRIES
+									&& RX.start(hDisplay, hwnd, hComm))
+								{
+									isWaitingForPacket = false;
+									packetCount = 0;
+								}
+								else {
+									++packetCount;
+								}
 							}
 						}
 					}	
@@ -157,11 +155,12 @@ bool Connection::startConnectProc(HWND hDisplay, HWND hwnd)
 	return 0;
 }
 
-bool Connection::stopConnnection()
+bool stopConnnection()
 {
 	isConnected = false;
 	TX.closeTransmitter();
 	isWriting = false;
+	packetCount = 0;
 	//RX.closeReception();
 	isReading = false;
 	isWaitingForPacket = false;
@@ -173,7 +172,7 @@ bool Connection::stopConnnection()
 	return true;
 }
 
-bool Connection::sendNewFile(LPCSTR filePath)
+bool sendNewFile(LPCSTR filePath)
 {
 	if (isConnected)
 	{
@@ -185,7 +184,7 @@ bool Connection::sendNewFile(LPCSTR filePath)
 	return false;
 }
 
-bool Connection::sendNewData(LPCSTR dataString)
+bool sendNewData(LPCSTR dataString)
 {
 	if (isConnected)
 	{
@@ -197,22 +196,22 @@ bool Connection::sendNewData(LPCSTR dataString)
 	return false;
 }
 
-int Connection::getEnqCount(void)
+int getEnqCount(void)
 {
 	return enqCount;
 }
 
-void Connection::incrementEnqCount(void)
+void incrementEnqCount(void)
 {
 	++enqCount;
 }
 
-void Connection::resetEnqCount(void)
+void resetEnqCount(void)
 {
 	enqCount = 0;
 }
 
-bool Connection::writeChar(const char c)
+bool writeChar(const char c)
 {
 	DWORD bytesRead;
 	char  writeBuff[] {c};
