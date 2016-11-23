@@ -24,50 +24,56 @@
 #include <thread>
 #include <Windows.h>
 
+#include "constants.h"
 #include "transmission.h"
 #include "reception.h"
 #include "timer.h"
 
 
-namespace connect{
+namespace connect {
+	static constexpr unsigned long  RAN_TIMER_MIN = 0; // in ms
+	static constexpr unsigned long  RAN_TIMER_MAX = 100; // in ms
+	static constexpr unsigned long  IDLE_STATE_TIME = 500; //ms
 
-   //Default timer with member function pointer
-    class Connection {
-    private: 
-        static const int			MAX_ENQ_COUNT	= 3 ; // in ms
-        static const int			BUFF_SIZE		= 1027; // in ms
-        static const unsigned long  RAN_TIMER_MIN = 0; // in ms
-        static const unsigned long  RAN_TIMER_MAX  = 100; // in ms
-		static const unsigned long  IDLE_STATE_TIME = 500; // (2/9600)s ; measure in in MicroSec
-       
-        int              enqCount;
-        CHAR   inBuffer[BUFF_SIZE];
-        HANDLE hWrite;
-        HANDLE hRead;
-        
-        std::thread readThread;
-        std::thread writeThread;
-        
-		transmit::Transmitter   TX;
-        receive::Reception      RX;
+	class Connection {
+	private:
 
-        void readInBuffer(); // event driven
-        void enqLine();
-        void startTx();
-        //three handles: one for displaying data , one stats , handle to comm port 
-        //  
-        void startRx(HWND hDisplay, HANDLE hcomm);
-        void startRandomEnqTimer();
-        void stopRandomEnqTimer();
-        void startIdleStateTimer();
-        void stopIdleStateTimer();
+		static bool isConnected;
+		static bool isWaitingForAck;
+		static bool isWaitingForPacket;
+		static bool isReading;
+		static bool isWriting;
 
-		Timer <Connection, &enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer;
-		Timer <Connection, &startRandomEnqTimer, IDLE_STATE_TIME > idleStateTimer;
-    public:
-        Connection();
-        bool startConnnection(LPCTSTR commPortAddress);
-        bool stopConnnection();
-    };
+		static int    enqCount;
+
+		static HANDLE hComm;
+
+		static std::thread connectedThread;
+
+		static transmit::Transmitter   TX;
+		static receive::Reception      RX;
+
+		static bool startConnectProc(HWND, HWND);
+
+	public:
+		Connection();
+		static bool startConnnection(LPCTSTR, HWND);
+		static bool stopConnnection();
+		static bool sendNewFile(LPCSTR);
+		static bool sendNewData(LPCSTR);
+		static bool writeChar(const char);
+
+		static int  getEnqCount();
+		static void incrementEnqCount();
+		static void resetEnqCount();
+
+		static void enqLine();
+		static void startRandomEnqTimer();
+
+		
+	};
+	Timer < &Connection::enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer ;
+	Timer < &Connection::startRandomEnqTimer, IDLE_STATE_TIME > idleStateTimer ;
+
 
 }
