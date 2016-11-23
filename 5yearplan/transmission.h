@@ -13,8 +13,10 @@
 #include "timer.h"
 
 namespace transmit {
+
+	std::atomic_bool timeoutReached;
+
     class Transmitter {
-        static std::atomic_bool timeoutReached;
         static void ackTimeout();
 
         std::queue<Packet> outputQueue;

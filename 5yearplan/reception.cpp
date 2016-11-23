@@ -29,6 +29,9 @@ void Reception::sendACK(HANDLE handleCom) {
 	// Issue write.
 	WriteFile(handleCom, &ch, 1, &dwWritten, NULL);
 }
+
+BOOL Reception::isPacketTimedOut = false;
+
 BOOL Reception::waitForPacket(HANDLE handleCom) {
 	packetTimer.start();
 	DWORD dwCommEvent;
