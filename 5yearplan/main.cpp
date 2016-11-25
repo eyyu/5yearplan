@@ -7,8 +7,6 @@
 #include <stdio.h>
 
 #include "Command.h"
-#include "Connect.h"
-
 #pragma warning (disable: 4096)
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
@@ -36,26 +34,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	HDC hdc = NULL;
 	PAINTSTRUCT paintstruct;
 
-	//availableCOM(hwnd);
-
 	switch (Message)
 	{
 	case WM_COMMAND:
 
 		if ((HWND)lParam == hConnectButton)
 		{
-			startConnnection(comPort, hwnd);
-			EnableWindow(hConnectButton, false);
-			EnableWindow(hDisconnectButton, true);
-			//connect(hComm, comPort, connected);
+			if (comPort[0] == 0)
+			{
+				DialogBox(hInstance, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc);
+				startConnnection(comPort, hwnd);
+				EnableWindow(hConnectButton, isConnected);
+				EnableWindow(hDisconnectButton, !isConnected);
+			}
+			else {
+				startConnnection(comPort, hwnd);
+				EnableWindow(hConnectButton, isConnected);
+				EnableWindow(hDisconnectButton, !isConnected);
+			}
 			break;
 		}
 		if ((HWND)lParam == hDisconnectButton)
 		{
 			stopConnnection();
-			EnableWindow(hConnectButton, true);
-			EnableWindow(hDisconnectButton, false);
-			//disconnect(hComm, connected, comPort);
+			EnableWindow(hConnectButton, !isConnected);
+			EnableWindow(hDisconnectButton, isConnected);
 			break;
 		}
 		if ((HWND)lParam == browseButton)
@@ -70,7 +73,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			break;
 
 		case IDM_PROPERTIES: // popup a dialog for changing the properties of selected com port.
-			//selectCommPort(hComm, comPort, hwnd, connected);
+			selectCommPort(hComm, comPort, hwnd, isConnected);
 			break;
 
 		case IDM_HELP:
@@ -87,7 +90,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	case WM_CHAR:	// Process keystroke
 		if (wParam == 27)
 		{
-			//disconnect(hComm, connected, lpszCommName);
+			stopConnnection();
+			EnableWindow(hConnectButton, !isConnected);
+			EnableWindow(hDisconnectButton, isConnected);
 		}
 		break;
 
@@ -145,56 +150,26 @@ void generateViews(HINSTANCE hInst, int nCmdShow)
 	DialogBox(hInstance, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc); // a dialog for the list of available com port.
 }
 
-//void selectCommPort(HANDLE hComm, LPCSTR lpszCommName, HWND hwnd, bool &connected)
-//{
-//	COMMCONFIG	cc;
-//	cc.dwSize = sizeof(COMMCONFIG);
-//	cc.wVersion = 0x100;
-//	GetCommConfig(hComm, &cc, &cc.dwSize);
-//	if (!CommConfigDialog(lpszCommName, hwnd, &cc))
-//	{
-//		MessageBox(NULL, "Error connecting to COMM port", lpszCommName, MB_OK);
-//		return;
-//	}
-//	else
-//	{
-//		//connect(hComm, lpszCommName, connected);
-//	}
-//	if ((SetCommState(hComm, &cc.dcb)) == FALSE)
-//	{
-//		return;
-//	}
-//}
-
-
-//void connect(HANDLE &commPort, LPCSTR CommName, bool &connection)
-//{
-//	if (connection == false)
-//	{
-//		//if startConnection = false
-//		if ((commPort = CreateFile(CommName, GENERIC_READ | GENERIC_WRITE, 0,
-//			NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL))
-//			== INVALID_HANDLE_VALUE)
-//		{
-//			MessageBox(NULL, "Error opening COM port", CommName, MB_OK);
-//			//invoke HANDLE CONNECTION ERRORS
-//		}
-//		else
-//		{
-//			MessageBox(NULL, "Conected to port", CommName, MB_OK);
-//			connection = true;
-//			EnableWindow(hConnectButton, !connection);
-//			EnableWindow(hDisconnectButton, connection);
-//		}
-//	}
-//	else
-//	{
-//		return;
-//	}
-//}
-
-
-//
+void selectCommPort(HANDLE hComm, LPCSTR lpszCommName, HWND hwnd, bool &connected)
+{
+	COMMCONFIG	cc;
+	cc.dwSize = sizeof(COMMCONFIG);
+	cc.wVersion = 0x100;
+	GetCommConfig(hComm, &cc, &cc.dwSize);
+	if (!CommConfigDialog(lpszCommName, hwnd, &cc))
+	{
+		MessageBox(NULL, "Error connecting to COMM port", lpszCommName, MB_OK);
+		return;
+	}
+	else
+	{
+		startConnnection(comPort, hwnd);
+	}
+	if ((SetCommState(hComm, &cc.dcb)) == FALSE)
+	{
+		return;
+	}
+}
 
 
 void createUIWindows(HWND hwnd)
@@ -226,19 +201,21 @@ void createUIWindows(HWND hwnd)
 		NULL
 	);
 
+	//add brush http://stackoverflow.com/questions/10063604/after-createwindow-how-to-give-the-window-a-color
 	statsTextBox = CreateWindow(
-		"STATIC",
+		"EDIT",
 		NULL,
 		WS_BORDER | WS_CHILD | WS_VISIBLE | WS_DISABLED,
 		STATS_TEXTBOX_START_X,
 		STATS_TEXTBOX_START_Y,
-		60,
+		210,
 		TEXTBOX_HEIGTH,
 		hwnd,
 		NULL,
 		NULL,
 		NULL
 	);
+
 
 	hConnectButton = CreateWindow(
 		"BUTTON",
@@ -280,6 +257,29 @@ void createUIWindows(HWND hwnd)
 		NULL,
 		NULL
 	);
+
+	//Change these to static final                                                                           
+	int x, w, y, h;
+	y = 200; h = 20;
+	x = 0; w = 50;
+	
+	x += w; w = 60;
+	label2 = CreateWindow(
+		"edit",
+		NULL,
+		WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+		x,
+		y,
+		w,
+		h,
+		hwnd,
+		NULL,
+		NULL,
+		NULL
+	);
+		
+	SetWindowText(label2, "STATS:");
+
 }
 
 
@@ -353,6 +353,3 @@ INT_PTR CALLBACK comDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 	return FALSE;
 }
 
-//void selectComport() {
-//	DialogBox(hInst, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc); // a dialog for the list of available com port.
-//}
