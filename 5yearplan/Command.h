@@ -2,13 +2,12 @@
 #include <windows.h>
 #include <stdio.h>
 #include "winmenu2.h"
-#include "Connect.h"
+//#include "Connect.h"
 
 
 char Name[] = "Wireless communication portal";
 LPCSTR	lpszCommName = "COM5";
 char comPort[10];//Currently selected COMM PORT
-//HANDLE hComm;
 char str[80] = "";
 bool connected = false;
 OPENFILENAME ofn;// Structure that contains attachment file info

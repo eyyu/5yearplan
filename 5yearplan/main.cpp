@@ -4,7 +4,10 @@
 
 #define STRICT
 
+#include <stdio.h>
+
 #include "Command.h"
+#include "Connect.h"
 
 #pragma warning (disable: 4096)
 #pragma comment(linker,"\"/manifestdependency:type='win32' \

@@ -13,10 +13,8 @@
 #include "timer.h"
 
 namespace transmit {
-
-	std::atomic_bool timeoutReached;
-
     class Transmitter {
+        static std::atomic_bool timeoutReached;
         static void ackTimeout();
 
         std::queue<Packet> outputQueue;
@@ -33,7 +31,7 @@ namespace transmit {
         void addDataToQueue(const std::string& data);
         void addFileToQueue(const LPTSTR& filePath);
         void addFileToQueue(const std::string& filePath);
-        void sendPacket(const HANDLE& hComm);
+        void sendPacket(const HANDLE& commHandle);
         bool outGoingDataInBuffer() const { return !outputQueue.empty(); };
         void closeTransmitter();
     };

@@ -14,6 +14,8 @@
 
 using namespace transmit;
 
+std::atomic_bool Transmitter::timeoutReached = false;
+
 void Transmitter::addDataToQueue(const std::string& data) {
     for (const auto& content : packetizeData(data)) {
         outputQueue.push(buildPacket(content));
@@ -56,11 +58,11 @@ void Transmitter::addFileToQueue(const std::string& filePath) {
     Transmitter::addDataToQueue(fileContents);
 }
 
-void Transmitter::sendPacket(const HANDLE& hComm) {
+void Transmitter::sendPacket(const HANDLE& commHandle) {
     timeoutReached = false;
     OVERLAPPED over = {0};
     over.hEvent = CreateEvent(nullptr, false, false, nullptr);
-    SetCommMask(hComm, EV_RXCHAR);
+    SetCommMask(commHandle, EV_RXCHAR);
 
     if (outputQueue.empty()) {
         //Error, tried to send packet that doesn't exist
@@ -69,7 +71,7 @@ void Transmitter::sendPacket(const HANDLE& hComm) {
 
     std::string data = outputQueue.front().getOutputString();
     //Overlapped struct goes in last parameter to writefile call
-    WriteFile(hComm, &data, data.size(), nullptr, &over);
+    WriteFile(commHandle, &data, data.size(), nullptr, &over);
     ackTimer.start();
 
     std::string buf;
@@ -77,8 +79,8 @@ void Transmitter::sendPacket(const HANDLE& hComm) {
 
     while (true) {
         while (!timeoutReached) {
-            if (WaitCommEvent(hComm, nullptr, &over)) {
-                ReadFile(hComm, &buf, 1, &success, &over);
+            if (WaitCommEvent(commHandle, nullptr, &over)) {
+                ReadFile(commHandle, &buf, 1, &success, &over);
                 if (success && buf.front() == ACK) {
                     ackTimer.stop();
                     break;
@@ -94,7 +96,7 @@ void Transmitter::sendPacket(const HANDLE& hComm) {
                 closeTransmitter();
                 return;
             }
-            WriteFile(hComm, &data, data.size(), nullptr, &over);
+            WriteFile(commHandle, &data, data.size(), nullptr, &over);
             ackTimer.start();
         } else {
             break;

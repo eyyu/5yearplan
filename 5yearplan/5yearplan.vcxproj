@@ -113,6 +113,7 @@
     <ClInclude Include="Command.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="Counters.h" />
     <ClInclude Include="packet.h" />
     <ClInclude Include="reception.h" />
     <ClInclude Include="timer.h" />
@@ -120,6 +121,7 @@
     <ClInclude Include="winmenu2.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Connect.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="reception.cpp" />

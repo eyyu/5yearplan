@@ -29,41 +29,35 @@
 #include "reception.h"
 #include "timer.h"
 
+static int enqCount = 0;
+static bool isConnected = false;
+static bool isReading = false;
+static bool isWriting = false;
+static bool isWaitingForPacket = false;
+static bool isWaitingForAck = false;
+static int  packetCount = 0;
 
-	static constexpr unsigned long  RAN_TIMER_MIN = 0; // in ms
-	static constexpr unsigned long  RAN_TIMER_MAX = 100; // in ms
-	static constexpr unsigned long  IDLE_STATE_TIME = 500; //ms
+static HANDLE  hComm = nullptr;
 
+static std::thread connectedThread;
 
-		int		enqCount = 0;
-		bool	isConnected = false;
-		bool	isReading = false;
-		bool	isWriting = false;
-		bool	isWaitingForPacket = false;
-		bool	isWaitingForAck = false;
-		int	    packetCount = 0;
+static transmit::Transmitter   TX;
+static receive::Reception      RX;
 
-		HANDLE  hComm = NULL;
+bool startConnectProc(HWND, HWND);
 
-		std::thread connectedThread;
+bool startConnnection(LPCTSTR, HWND);
+bool stopConnnection();
+bool sendNewFile(LPCSTR);
+bool sendNewData(LPCSTR);
+bool writeChar(const char);
 
-		transmit::Transmitter   TX;
-		receive::Reception      RX;
+int  getEnqCount();
+void incrementEnqCount();
+void resetEnqCount();
 
-		bool startConnectProc(HWND, HWND);
+void enqLine();
+void startRandomEnqTimer();
 
-		bool startConnnection(LPCTSTR, HWND);
-		bool stopConnnection();
-		bool sendNewFile(LPCSTR);
-		bool sendNewData(LPCSTR);
-		bool writeChar(const char);
-
-		int  getEnqCount();
-		void incrementEnqCount();
-		void resetEnqCount();
-
-		void enqLine();
-		void startRandomEnqTimer();
-
-	Timer < &enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer ;
-	Timer < &startRandomEnqTimer, IDLE_STATE_TIME > idleStateTimer ;
+static Timer <&enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer;
+static Timer <&startRandomEnqTimer, IDLE_STATE_TIME> idleStateTimer;
