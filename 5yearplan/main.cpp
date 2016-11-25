@@ -41,15 +41,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 
 		if ((HWND)lParam == hConnectButton)
 		{
-			connect(hComm, comPort, connected);
+			startConnnection(comPort, hwnd);
+			EnableWindow(hConnectButton, false);
+			EnableWindow(hDisconnectButton, true);
+			//connect(hComm, comPort, connected);
 			break;
 		}
 		if ((HWND)lParam == hDisconnectButton)
 		{
-			disconnect(hComm, connected, comPort);
+			stopConnnection();
+			EnableWindow(hConnectButton, true);
+			EnableWindow(hDisconnectButton, false);
+			//disconnect(hComm, connected, comPort);
 			break;
 		}
-		if ((HWND)lParam == browse)
+		if ((HWND)lParam == browseButton)
 		{
 			attach();
 			break;
@@ -61,7 +67,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 			break;
 
 		case IDM_PROPERTIES: // popup a dialog for changing the properties of selected com port.
-			selectCommPort(hComm, comPort, hwnd, connected);
+			//selectCommPort(hComm, comPort, hwnd, connected);
 			break;
 
 		case IDM_HELP:
@@ -78,7 +84,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 	case WM_CHAR:	// Process keystroke
 		if (wParam == 27)
 		{
-			disconnect(hComm, connected, lpszCommName);
+			//disconnect(hComm, connected, lpszCommName);
 		}
 		break;
 
@@ -136,71 +142,56 @@ void generateViews(HINSTANCE hInst, int nCmdShow)
 	DialogBox(hInstance, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc); // a dialog for the list of available com port.
 }
 
-void selectCommPort(HANDLE hComm, LPCSTR lpszCommName, HWND hwnd, bool &connected)
-{
-	COMMCONFIG	cc;
-	cc.dwSize = sizeof(COMMCONFIG);
-	cc.wVersion = 0x100;
-	GetCommConfig(hComm, &cc, &cc.dwSize);
-	if (!CommConfigDialog(lpszCommName, hwnd, &cc))
-	{
-		MessageBox(NULL, "Error connecting to COMM port", lpszCommName, MB_OK);
-		return;
-	}
-	else
-	{
-		//connect(hComm, lpszCommName, connected);
-	}
-	if ((SetCommState(hComm, &cc.dcb)) == FALSE)
-	{
-		return;
-	}
-}
+//void selectCommPort(HANDLE hComm, LPCSTR lpszCommName, HWND hwnd, bool &connected)
+//{
+//	COMMCONFIG	cc;
+//	cc.dwSize = sizeof(COMMCONFIG);
+//	cc.wVersion = 0x100;
+//	GetCommConfig(hComm, &cc, &cc.dwSize);
+//	if (!CommConfigDialog(lpszCommName, hwnd, &cc))
+//	{
+//		MessageBox(NULL, "Error connecting to COMM port", lpszCommName, MB_OK);
+//		return;
+//	}
+//	else
+//	{
+//		//connect(hComm, lpszCommName, connected);
+//	}
+//	if ((SetCommState(hComm, &cc.dcb)) == FALSE)
+//	{
+//		return;
+//	}
+//}
 
 
-void connect(HANDLE &commPort, LPCSTR CommName, bool &connection)
-{
-	if (connection == false)
-	{
-		//if startConnection = false
-		if ((commPort = CreateFile(CommName, GENERIC_READ | GENERIC_WRITE, 0,
-			NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL))
-			== INVALID_HANDLE_VALUE)
-		{
-			MessageBox(NULL, "Error opening COM port", CommName, MB_OK);
-			//invoke HANDLE CONNECTION ERRORS
-		}
-		else
-		{
-			MessageBox(NULL, "Conected to port", CommName, MB_OK);
-			connection = true;
-			EnableWindow(hConnectButton, !connection);
-			EnableWindow(hDisconnectButton, connection);
-		}
-	}
-	else
-	{
-		return;
-	}
-}
+//void connect(HANDLE &commPort, LPCSTR CommName, bool &connection)
+//{
+//	if (connection == false)
+//	{
+//		//if startConnection = false
+//		if ((commPort = CreateFile(CommName, GENERIC_READ | GENERIC_WRITE, 0,
+//			NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL))
+//			== INVALID_HANDLE_VALUE)
+//		{
+//			MessageBox(NULL, "Error opening COM port", CommName, MB_OK);
+//			//invoke HANDLE CONNECTION ERRORS
+//		}
+//		else
+//		{
+//			MessageBox(NULL, "Conected to port", CommName, MB_OK);
+//			connection = true;
+//			EnableWindow(hConnectButton, !connection);
+//			EnableWindow(hDisconnectButton, connection);
+//		}
+//	}
+//	else
+//	{
+//		return;
+//	}
+//}
 
 
-void disconnect(HANDLE& commPort, bool& connection, LPCSTR CommName)
-{
-	if (connection == true)
-	{
-		CloseHandle(commPort);
-		//ExitThread(threadId);//terminate thread
-		MessageBox(NULL, "Disconnected from port", CommName, MB_OK);
-		connection = false;
-		EnableWindow(hDisconnectButton, connection);
-		EnableWindow(hConnectButton, !connection);
-	}
-	else
-	{
-		return;
-	}
-}
+//
 
 
 void createUIWindows(HWND hwnd)
@@ -231,6 +222,21 @@ void createUIWindows(HWND hwnd)
 		NULL,
 		NULL
 	);
+
+	statsTextBox = CreateWindow(
+		"STATIC",
+		NULL,
+		WS_BORDER | WS_CHILD | WS_VISIBLE | WS_DISABLED,
+		STATS_TEXTBOX_START_X,
+		STATS_TEXTBOX_START_Y,
+		60,
+		TEXTBOX_HEIGTH,
+		hwnd,
+		NULL,
+		NULL,
+		NULL
+	);
+
 	hConnectButton = CreateWindow(
 		"BUTTON",
 		"CONNECT",
@@ -258,7 +264,7 @@ void createUIWindows(HWND hwnd)
 		NULL
 	);
 
-	browse = CreateWindow(
+	browseButton = CreateWindow(
 		"BUTTON",
 		"ATTACH",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
