@@ -64,6 +64,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT Message,
 		if ((HWND)lParam == browseButton)
 		{
 			attach();
+			sendNewFile(filePath);
+
 			break;
 		}
 		switch (LOWORD(wParam))
