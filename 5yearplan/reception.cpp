@@ -1,3 +1,4 @@
+
 #include "reception.h"
 
 using namespace receive;
@@ -67,7 +68,6 @@ BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<BYTE> &buffer) {
 	auto syn_pos = std::find(buffer.begin(), buffer.end(), SYN);
 	if (syn_pos == buffer.end())
 		return false;
-
 	buffer.erase(buffer.begin(), syn_pos);
 	*/
 
@@ -195,3 +195,21 @@ void Process::cls() {
 	ReleaseDC(handleDisplay, hdc); // Release device context
 	char_x = char_y = 0;
 }
+
+void Reception::closeReceiption(){
+    packetCounter=0;
+    errorCounter=0;
+    process.resetProcess();
+}
+
+void Process::resetProcess(){
+    if(isProcessing && processThread !=NULL)
+    	CloseHandle(processThread);
+    processThread=NULL;
+    isProcessing=false;
+	dataQueue = {};
+    writeBuffer.clear();
+    cls();
+
+}
+

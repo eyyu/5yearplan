@@ -1,6 +1,4 @@
 #pragma once
-#ifndef RECEIVE_H
-#define RECEIVE_H
 
 #include <windows.h>
 #include <vector>
@@ -34,6 +32,7 @@ namespace receive {
 		void failToSaveFile();
 		void cls();
 	public:
+		void resetProcess();
 		void startProcess(HWND handleDisplayParam, std::string&);
 	};
 
@@ -57,7 +56,8 @@ namespace receive {
 		PacketTimer packetTimer;
 	public:
 		BOOL start(HWND handleDisplay, HWND handleStat, HANDLE handleCom);
+        void closeReceiption();
+
 	};
 
 };
-#endif // !RECEIVE_H
