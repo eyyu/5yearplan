@@ -171,13 +171,11 @@ bool stopConnnection()
     if (isConnected)
     {
         isConnected = false;
+		Sleep(DISCONNECT_TIMEOUT);
         TX.closeTransmitter();
         RX.closeReceiption();
-
-
+		resetDataValues();
         connectedThread.join();
-        Sleep(5000);
-
         PurgeComm(hComm, PURGE_TXABORT | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_RXCLEAR);
         CloseHandle(hComm);
         return true;
@@ -185,7 +183,7 @@ bool stopConnnection()
 
 }
 
-void resetValues()
+void resetDataValues()
 {
     isWriting = false;
     packetCount = 0;
