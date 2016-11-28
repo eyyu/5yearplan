@@ -202,17 +202,17 @@ bool sendNewData(LPCSTR dataString)
     return false;
 }
 
-int getEnqCount(void)
+int getEnqCount()
 {
     return enqCount;
 }
 
-void incrementEnqCount(void)
+void incrementEnqCount()
 {
     ++enqCount;
 }
 
-void resetEnqCount(void)
+void resetEnqCount()
 {
     enqCount = 0;
 }

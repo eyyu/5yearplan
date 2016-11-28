@@ -55,5 +55,9 @@ bool writeChar(const char);
 void enqLine();
 void startRandomEnqTimer();
 
+int getEnqCount();
+void incrementEnqCount();
+void resetEnqCount();
+
 static Timer <&enqLine, RAN_TIMER_MIN, RAN_TIMER_MAX> randomEnqTimer;
 static Timer <&startRandomEnqTimer, IDLE_STATE_TIME> idleStateTimer;
