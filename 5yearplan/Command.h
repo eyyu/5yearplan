@@ -6,7 +6,7 @@
 
 
 char Name[] = "Wireless communication portal";
-LPCSTR	lpszCommName = "COM5";
+LPCSTR    lpszCommName = "COM5";
 char comPort[10];//Currently selected COMM PORT
 char str[80] = "";
 OPENFILENAME ofn;// Structure that contains attachment file info
@@ -24,8 +24,8 @@ void availableCOM(HWND);
 INT_PTR CALLBACK comDialogProc(HWND, UINT, WPARAM, LPARAM);
 
 //Window handlers and variables
-static const int WIN_LENGTH = 500;		  // Main window length
-static const int WIN_WIDTH = 650;		  // Main window height
+static const int WIN_LENGTH = 500;          // Main window length
+static const int WIN_WIDTH = 650;          // Main window height
 
 //DATA MEMBERS
 static const DWORD BUFF_SIZE = 256;

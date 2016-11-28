@@ -27,6 +27,7 @@ class Timer {
 
 public:
     Timer() : dur(getRandDuration()) {}
+    ~Timer() {stop();}
     void start() {
         stop();
         {
@@ -67,6 +68,7 @@ class Timer<ev, duration, 100> {
 
 public:
     Timer() : dur(duration) {}
+    ~Timer() {stop();}
     void start() {
         stop();
         {
