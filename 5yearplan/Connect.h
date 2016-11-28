@@ -52,10 +52,6 @@ bool sendNewFile(LPCSTR);
 bool sendNewData(LPCSTR);
 bool writeChar(const char);
 
-int  getEnqCount();
-void incrementEnqCount();
-void resetEnqCount();
-
 void enqLine();
 void startRandomEnqTimer();
 

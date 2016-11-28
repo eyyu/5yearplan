@@ -47,6 +47,9 @@ void enqLine()
 
 bool startConnnection( LPCTSTR commPortAddress , HWND hwnd)
 {
+    COMMCONFIG cc;
+    GetDefaultCommConfig(commPortAddress, &cc, &cc.dwSize);
+    cc.dcb.BaudRate = 9600;
     hComm = CreateFile( commPortAddress,
                         GENERIC_WRITE | GENERIC_READ,  // access ( write)
                         0,                             // (share) 0:cannot share the COM port
@@ -61,7 +64,7 @@ bool startConnnection( LPCTSTR commPortAddress , HWND hwnd)
         MessageBox(NULL, "CANNOT OPEN COMM PORT ", "ERROR", MB_OK );
         return false;
     }
-
+    SetCommState(hComm, &cc.dcb);
     isConnected = true;
     connectedThread = std::thread(startConnectProc, hwnd , hwnd); // NULL to be replaces with stats Display!!
     connectedThread.detach(); // run connected threas in background
@@ -80,6 +83,15 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
         return false;
     }
     
+    if (TX.outGoingDataInBuffer())
+    {
+        //randomEnqTimer.start();
+    }
+    else
+    {
+        enqLine();
+        //idleStateTimer.start();
+    }
     while ( isConnected )
     {
         if (WaitCommEvent(hComm, &dwEvent, NULL))
@@ -93,24 +105,25 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
                 }
                 else
                 {
-                    if (nBytesRead == 1)
+                    if (nBytesRead >= 1)
                     {
                         if (inBuff[0] == ACK)
                         {
-                            if (isWaitingForAck
-                                && !isReading
-                                && !isWriting)
+                            if (1)
                             {
                                 resetEnqCount();
                                 isWaitingForAck = false;
-                                if (TX.outGoingDataInBuffer())
+                                while (1)
                                 {
-                                    isWriting = true;
-                                    TX.sendPacket(hComm);
+                                    if(TX.outGoingDataInBuffer()){
+                                        isWriting = true;
+                                        TX.sendPacket(hComm);
+                                    }
+
                                 }
-                                else
+                                //else
                                 {
-                                    idleStateTimer.start();
+                                   // idleStateTimer.start();
                                 }
                             }
                         }
@@ -118,7 +131,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
                                  && !isReading
                                  && !isWriting)
                         {
-                            idleStateTimer.stop();
+                            //idleStateTimer.stop();
                             writeChar(ACK);
                             if (isWaitingForPacket)
                             {
@@ -169,8 +182,9 @@ bool sendNewFile(LPCSTR filePath)
     if (isConnected)
     {
         TX.addFileToQueue(filePath);
-        idleStateTimer.stop();
-        randomEnqTimer.start();
+        enqLine();
+        // idleStateTimer.stop();
+        //randomEnqTimer.start();
         return true;
     }
     return false;
@@ -206,10 +220,9 @@ void resetEnqCount(void)
 bool writeChar(const char c)
 {
     DWORD bytesRead;
-    char  writeBuff[] {c};
-
+    
      if ( WriteFile(hComm,
-                     writeBuff,
+                     &c,
                      sizeof(c),
                      &bytesRead,
                      NULL

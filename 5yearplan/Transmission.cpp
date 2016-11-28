@@ -27,19 +27,28 @@ Packet Transmitter::buildPacket(const std::string & data) const {
 }
 
 std::vector<std::string> Transmitter::packetizeData(const std::string& data) const {
-    const size_t packetNum = data.length() / DATA_SIZE;
+    const size_t packetNum = (data.length() / DATA_SIZE);
     std::vector<std::string> dataChunks;
 
-    dataChunks.emplace_back(DATA_SIZE, DC1);
+   // dataChunks.emplace_back(DATA_SIZE, DC1);
 
-    for (size_t i = 0; i < packetNum; ++i) {
-        dataChunks.emplace_back(data, i * DATA_SIZE, DATA_SIZE);
-    }
-    if (data.length() % DATA_SIZE) {
-        std::string remaining = data.substr(packetNum * DATA_SIZE);
-        dataChunks.push_back(remaining.append(DATA_SIZE - remaining.length(), NULL_BYTE));
-    } else {
-        dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
+    std::string temp(data);
+
+    while (1) {
+        if (temp.size() < DATA_SIZE) {
+            if (temp.length() % DATA_SIZE) {
+                std::string remaining = temp.substr(packetNum * DATA_SIZE);
+                dataChunks.push_back(remaining.append(DATA_SIZE - remaining.length(), NULL_BYTE));
+            }
+            else {
+                dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
+            }
+            break;
+        }
+        else {
+            dataChunks.emplace_back(temp, 0, DATA_SIZE);
+            temp.erase(0, DATA_SIZE);
+        }
     }
     return dataChunks;
 }
@@ -68,10 +77,12 @@ void Transmitter::sendPacket(const HANDLE& commHandle) {
         //Error, tried to send packet that doesn't exist
         throw std::runtime_error("Tried to send a packet from an empty queue");
     }
-
+    outputQueue.front().data;
     std::string data = outputQueue.front().getOutputString();
     //Overlapped struct goes in last parameter to writefile call
-    WriteFile(commHandle, &data, data.size(), nullptr, &over);
+    for (int i = 0; i < PACKET_SIZE; i++) {
+        WriteFile(commHandle, &data[i], 1, nullptr, NULL);
+    }
     ackTimer.start();
 
     std::string buf;
@@ -96,7 +107,7 @@ void Transmitter::sendPacket(const HANDLE& commHandle) {
                 closeTransmitter();
                 return;
             }
-            WriteFile(commHandle, &data, data.size(), nullptr, &over);
+            WriteFile(commHandle, &data, PACKET_SIZE, nullptr, &over);
             ackTimer.start();
         } else {
             break;
