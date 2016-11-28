@@ -3,6 +3,8 @@
 
 using namespace receive;
 
+BOOL Reception::isPacketTimedOut = false;
+
 BOOL Reception::start(HWND handleDisplay, HWND handleStat, HANDLE handleCom) {
 	Packet packet;
 	std::vector<BYTE> buffer;
@@ -30,24 +32,31 @@ void Reception::sendACK(HANDLE handleCom) {
 	// Issue write.
 	WriteFile(handleCom, &ch, 1, &dwWritten, NULL);
 }
-
-BOOL Reception::isPacketTimedOut = false;
-
 BOOL Reception::waitForPacket(HANDLE handleCom) {
-	packetTimer.start();
+	OVERLAPPED Timeout_Event;
+	memset((char *)&Timeout_Event, 0, sizeof(OVERLAPPED));
+	Timeout_Event.hEvent = CreateEvent(NULL, TRUE, TRUE, 0);
 	DWORD dwCommEvent;
-	isPacketTimedOut = false;
 	BOOL result = false;
+
 	if (!SetCommMask(handleCom, EV_RXCHAR)) // Set event listener for RX_CHAR, occurs when a message comes from the port.
 		MessageBox(NULL, "SetCommMask", "Error", MB_OK | MB_ICONINFORMATION);
 
-	while(isPacketTimedOut){ // if isPacketTimedOut is false, stop wating.
-		if (WaitCommEvent(handleCom, &dwCommEvent, NULL)) { // wait for RXCHAR event.
-			result = true;
-			break;
+	if (WaitCommEvent(handleCom, &dwCommEvent, &Timeout_Event))
+	{ // wait for RXCHAR event.
+		result = true;
+	}
+	else
+	{
+		if (GetLastError() == ERROR_IO_PENDING)
+		{
+			if (WaitForSingleObject(Timeout_Event.hEvent, (DWORD)RECEPTION_TIMEOUT) == WAIT_OBJECT_0)
+			{
+				result = true;
+			}		
 		}
 	}
-	packetTimer.stop();
+
 	return result;
 };
 
@@ -67,7 +76,7 @@ BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<BYTE> &buffer) {
 	/*
 	auto syn_pos = std::find(buffer.begin(), buffer.end(), SYN);
 	if (syn_pos == buffer.end())
-		return false;
+	return false;
 	buffer.erase(buffer.begin(), syn_pos);
 	*/
 
@@ -167,7 +176,7 @@ void Process::displayChar(char c) {
 
 	GetTextExtentPoint32(hdc, &c, 1, &sz); // get the size of current character.
 
-	if(c == '\n' || char_x >= TEXTBOX_WIDTH - 20) { // if x position is past the window,
+	if (c == '\n' || char_x >= TEXTBOX_WIDTH - 20) { // if x position is past the window,
 		char_y += sz.cy; // increse y position.
 		char_x = 0; // set x position to leftmost
 	}
@@ -196,20 +205,20 @@ void Process::cls() {
 	char_x = char_y = 0;
 }
 
-void Reception::closeReceiption(){
-    packetCounter=0;
-    errorCounter=0;
-    process.resetProcess();
+void Reception::closeReceiption() {
+	packetCounter = 0;
+	errorCounter = 0;
+	process.resetProcess();
 }
 
-void Process::resetProcess(){
-    if(isProcessing && processThread !=NULL)
-    	CloseHandle(processThread);
-    processThread=NULL;
-    isProcessing=false;
+void Process::resetProcess() {
+	if (isProcessing && processThread != NULL)
+		CloseHandle(processThread);
+	processThread = NULL;
+	isProcessing = false;
 	dataQueue = {};
-    writeBuffer.clear();
-    cls();
+	writeBuffer.clear();
+	cls();
 
 }
 

@@ -38,9 +38,6 @@ namespace receive {
 
 	class Reception {
 	private:
-		static void packetTimeout();
-		static BOOL isPacketTimedOut;
-
 		DWORD packetCounter;
 		DWORD errorCounter;
 		Process process;
@@ -52,11 +49,9 @@ namespace receive {
 		BOOL parsePacket(Packet &packet, std::vector<BYTE> &buffer);
 		BOOL validatePacket(Packet &packet);
 		void errorStat(HWND handleStat);
-		typedef Timer<&packetTimeout, (PACKET_SIZE / BAUD_RATE) * 3000> PacketTimer;
-		PacketTimer packetTimer;
 	public:
 		BOOL start(HWND handleDisplay, HWND handleStat, HANDLE handleCom);
-        void closeReceiption();
+		void closeReceiption();
 
 	};
 
