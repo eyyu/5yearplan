@@ -80,9 +80,28 @@ void Transmitter::sendPacket(const HANDLE& commHandle) {
     outputQueue.front().data;
     std::string data = outputQueue.front().getOutputString();
     //Overlapped struct goes in last parameter to writefile call
-    for (int i = 0; i < PACKET_SIZE; i++) {
-        WriteFile(commHandle, &data[i], 1, nullptr, NULL);
-    }
+
+	OVERLAPPED osWrite = { 0 };
+	DWORD dwWritten;
+	bool result = false;
+
+	// Create this writes OVERLAPPED structure hEvent.
+	osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (!WriteFile(commHandle,
+		data.c_str(),
+		PACKET_SIZE,
+		&dwWritten,
+		&osWrite
+	))
+	{
+		if (GetLastError() == ERROR_IO_PENDING) {
+			WaitForSingleObject(osWrite.hEvent, INFINITE);
+			//GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE);
+		}
+	}
+    //for (int i = 0; i < PACKET_SIZE; i++) {
+    //    WriteFile(commHandle, &data[i], 1, nullptr, NULL);
+    //}
     ackTimer.start();
 
     std::string buf;

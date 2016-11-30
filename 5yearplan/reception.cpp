@@ -177,23 +177,23 @@ void Process::displayChar(char c) {
     ReleaseDC(handleDisplay, hdc); // Release device context
 }
 void Process::cls() {
-    HDC hdc; // handle for device contect
-    SIZE sz; // size of charcter
-    hdc = GetDC(handleDisplay);             // get device context
-    int x = 0, y = 0;
-    char space = ' ';
-    while (y < TEXTBOX_HEIGTH) {
-        while (x < TEXTBOX_WIDTH) {
-            TextOut(hdc, x, y, &space, 1); // display character on window
-            GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
-            x += sz.cx;
-        }
-        GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
-        y += sz.cy;
-        x = 0;
-    }
-    ReleaseDC(handleDisplay, hdc); // Release device context
-    char_x = char_y = 0;
+    //HDC hdc; // handle for device contect
+    //SIZE sz; // size of charcter
+    //hdc = GetDC(handleDisplay);             // get device context
+    //int x = 0, y = 0;
+    //char space = ' ';
+    //while (y < TEXTBOX_HEIGTH) {
+    //    while (x < TEXTBOX_WIDTH) {
+    //        TextOut(hdc, x, y, &space, 1); // display character on window
+    //        GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
+    //        x += sz.cx;
+    //    }
+    //    GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
+    //    y += sz.cy;
+    //    x = 0;
+    //}
+    //ReleaseDC(handleDisplay, hdc); // Release device context
+    //char_x = char_y = 0;
 }
 
 void Reception::closeReceiption() {

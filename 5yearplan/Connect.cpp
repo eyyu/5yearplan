@@ -28,11 +28,11 @@ void startRandomEnqTimer()
 // event driven
 void enqLine()
 {
-    if (enqCount >= MAX_RETRIES)
-    {
-        stopConnnection();
-        return;
-    }
+    //if (enqCount >= MAX_RETRIES)
+    //{
+    //    stopConnnection();
+    //    return;
+    //}
     writeChar(ENQ);
     return;
 }
@@ -56,7 +56,8 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
         MessageBox(NULL, "CANNOT OPEN COMM PORT ", "ERROR", MB_OK);
         return false;
     }
-    SetCommState(hComm, &cc.dcb);
+	if(CommConfigDialog(commPortAddress, hwnd, &cc))
+		SetCommState(hComm, &cc.dcb);
     isConnected = true;
     connectedThread = std::thread(startConnectProc, hwnd, hwnd); // NULL to be replaces with stats Display!!
     connectedThread.detach(); // run connected threas in background
@@ -65,117 +66,147 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 
 bool startConnectProc(HWND hDisplay, HWND hwnd)
 {
-    OVERLAPPED timeoutEvent;
-    memset((char *)&timeoutEvent, 0, sizeof(OVERLAPPED));
-    timeoutEvent.hEvent = CreateEvent(NULL, true, true, 0);
+	OVERLAPPED timeoutEvent;
+	memset((char *)&timeoutEvent, 0, sizeof(OVERLAPPED));
+	timeoutEvent.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-    char inBuff[PACKET_SIZE];
-    DWORD nBytesRead, dwEvent, dwError;
-    COMSTAT cs;
+	char inBuff[PACKET_SIZE];
+	DWORD nBytesRead, dwEvent, dwError;
+	COMSTAT cs;
 
-    if (!SetCommMask(hComm, EV_RXCHAR))
-    {
-        MessageBox(NULL, "Cannot Set Comm Mask", "ERROR", MB_OK);
-        return false;
-    }
+	OVERLAPPED osReader = { 0 };
 
-    if (TX.outGoingDataInBuffer())
-    {
-        //randomEnqTimer.start();
-    }
-    else
-    {
-        enqLine();
-        //idleStateTimer.start();
-    }
-    while (isConnected)
-    {
-        if (WaitCommEvent(hComm, &dwEvent, &timeoutEvent))
-        {
-            ClearCommError(hComm, &dwError, &cs);
-            if ((dwEvent & EV_RXCHAR) && cs.cbInQue)
-            {
-                if (!ReadFile(hComm, inBuff, cs.cbInQue, &nBytesRead, NULL))
-                {
-                    MessageBox(NULL, "Error reading from com port", "ERROR", MB_OK);
-                }
-                else
-                {
-                    if (nBytesRead >= 1)
-                    {
-                        if (inBuff[0] == ACK)
-                        {
-                            if (1)
-                            {
-                                enqCount = 0;
-                                isWaitingForAck = false;
-                                while (1)
-                                {
-                                    if (TX.outGoingDataInBuffer()) {
-                                        isWriting = true;
-                                        TX.sendPacket(hComm);
-                                    }
+	// Create the overlapped event. Must be closed before exiting
+	// to avoid a handle leak.
+	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-                                }
-                                //else
-                                {
-                                    // idleStateTimer.start();
-                                }
-                            }
-                        }
-                        else if (inBuff[0] == ENQ
-                                 && !isReading
-                                 && !isWriting)
-                        {
-                            //idleStateTimer.stop();
-                            writeChar(ACK);
-                            if (isWaitingForPacket)
-                            {
-                                if (packetCount < MAX_RETRIES
-                                    && RX.start(hDisplay, hwnd, hComm))
-                                {
-                                    isWaitingForPacket = false;
-                                    packetCount = 0;
-                                }
-                                else {
-                                    ++packetCount;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                MessageBox(NULL, "Error detecting event in com port", "ERROR", MB_OK);
-            }
-        }
-        else
-        {
-            if (GetLastError() == ERROR_IO_PENDING)
-            {
-                if (WaitForSingleObject(timeoutEvent.hEvent, (DWORD)DISCONNECT_TIMEOUT) != WAIT_OBJECT_0)
-                {
-                    stopConnnection();
-                }
-            }
-        }
-    }
+	if (osReader.hEvent == NULL) {
+		return false;
+	}
 
-    PurgeComm(hComm, PURGE_RXCLEAR);
-    return 0;
+	if (!SetCommMask(hComm, EV_RXCHAR))
+	{
+		MessageBox(NULL, "Cannot Set Comm Mask", "ERROR", MB_OK);
+		return false;
+	}
+
+	if (TX.outGoingDataInBuffer())
+	{
+		randomEnqTimer.start();
+	}
+	else
+	{
+		idleStateTimer.start();
+	}
+	bool timedout = false;
+	while (isConnected)
+	{
+		if (!WaitCommEvent(hComm, &dwEvent, &timeoutEvent))
+		{
+			if (GetLastError() == ERROR_IO_PENDING)
+			{
+				if (WaitForSingleObject(timeoutEvent.hEvent, (DWORD)DISCONNECT_TIMEOUT) == WAIT_OBJECT_0)
+				{
+					timedout = false;
+				}
+				else {
+					timedout = true;
+
+				}
+				ResetEvent(timeoutEvent.hEvent);
+			}else{
+			}
+			ClearCommError(hComm, &dwError, &cs);
+		}
+		else {
+			timedout = false;
+		}
+
+		if (!timedout) {
+			ClearCommError(hComm, &dwError, &cs);
+			if ((dwEvent & EV_RXCHAR) && cs.cbInQue)
+			{
+				char chRead;
+				bool boolRead = false;
+				if (!ReadFile(hComm, &chRead, 1, &nBytesRead, &osReader))
+				{
+					if (GetLastError() == ERROR_IO_PENDING) {
+						if (WaitForSingleObject(osReader.hEvent, INFINITE) == WAIT_OBJECT_0)
+							if (GetOverlappedResult(hComm, &osReader, &nBytesRead, FALSE))
+								boolRead = true;
+					}else{
+						boolRead = false;
+					}
+				}
+				else
+					boolRead = true;
+
+				if (boolRead)
+				{
+					if (nBytesRead >= 1)
+					{
+						if (chRead == ACK || chRead == 'F')
+						{
+							if (isWaitingForAck)
+							{
+								idleStateTimer.stop();
+								randomEnqTimer.stop();
+								enqCount = 0;
+								isWaitingForAck = false;
+								if (TX.outGoingDataInBuffer()) {
+									isWriting = true;
+									TX.sendPacket(hComm);
+								}
+								else
+								{
+									idleStateTimer.start();
+								}
+							}
+						}
+						else if (chRead == ENQ
+							&& !isReading
+							&& !isWriting)
+						{
+							idleStateTimer.stop();
+							randomEnqTimer.stop();
+							writeChar(ACK);
+							if (isWaitingForPacket)
+							{
+								if (packetCount < MAX_RETRIES
+									&& RX.start(hDisplay, hwnd, hComm))
+								{
+									isWaitingForPacket = false;
+									packetCount = 0;
+								}
+								else {
+									++packetCount;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	CloseHandle(timeoutEvent.hEvent);
+	CloseHandle(osReader.hEvent);
+
+	PurgeComm(hComm, PURGE_RXCLEAR);
+	return 0;
 }
 
 bool stopConnnection()
 {
     if (isConnected)
     {
+		idleStateTimer.stop();
+		randomEnqTimer.stop();
         isConnected = false;
 		Sleep(DISCONNECT_TIMEOUT);
         TX.closeTransmitter();
         RX.closeReceiption();
 		resetDataValues();
-        connectedThread.join();
+        //connectedThread.join();
         PurgeComm(hComm, PURGE_TXABORT | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_RXCLEAR);
         CloseHandle(hComm);
         return true;
@@ -219,25 +250,48 @@ bool sendNewData(LPCSTR dataString)
 
 bool writeChar(const char c)
 {
-    DWORD bytesRead;
-
-    if (WriteFile(hComm,
+	OVERLAPPED osWrite = { 0 };
+	DWORD dwWritten;
+	bool result = true;
+	char ch = 'A';
+	// Create this writes OVERLAPPED structure hEvent.
+	osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (osWrite.hEvent == NULL) {
+		return false;
+	}
+    if (!WriteFile(hComm,
                   &c,
-                  sizeof(c),
-                  &bytesRead,
-                  NULL
+                  1,
+                  &dwWritten,
+                  &osWrite
                   ))
     {
-        if (c == ACK) {
-            isWaitingForPacket = true;
+		if (GetLastError() != ERROR_IO_PENDING) {
+			result = false;
+		}
+		else {
+			if (WaitForSingleObject(osWrite.hEvent, INFINITE) == WAIT_OBJECT_0) {
+				if (!GetOverlappedResult(hComm, &osWrite, &dwWritten, TRUE))
+					result = false;
+			}else result = false;
 
-        }
-        else if (c == ENQ)
-        {
-            ++enqCount;
-            isWaitingForAck = true;
-        }
-        return true;
-    }
-    return false;
+
+		}
+	}/*else {
+		result = true;
+	}*/
+
+	if (result) {
+		if (c == ACK) {
+			isWaitingForPacket = true;
+		}
+		else if (c == ENQ)
+		{
+			++enqCount;
+			isWaitingForAck = true;
+		}
+	}
+	CloseHandle(osWrite.hEvent);
+
+    return result;
 }

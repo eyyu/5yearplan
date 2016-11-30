@@ -22,7 +22,8 @@ class Timer {
     std::uniform_int_distribution<unsigned long long> uni{minDuration, maxDuration}; // guaranteed unbiased
 
     unsigned long getRandDuration() {
-        return uni(randEng);
+        //return uni(randEng);
+		return (randEng() % (maxDuration - minDuration)) + minDuration;
     }
 
 public:
