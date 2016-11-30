@@ -1,16 +1,22 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <sstream>
+#include <iomanip>
 
 #include "constants.h"
 #include "packet.h"
 
 std::string Packet::getOutputString() const {
     std::string rtn;
-    rtn.push_back(this->syn);
-    rtn.append(this->data);
-    rtn.push_back(this->crc & 0xFF00);
-    rtn.push_back(this->crc & 0x00FF);
+    rtn.push_back(syn);
+    rtn.append(data);
+
+    std::stringstream ss;
+    ss << std::setw(4) << std::hex  << crc;
+
+    rtn.push_back(static_cast<unsigned char>(strtoul(ss.str().substr(0, 2).c_str(), nullptr, 16)));
+    rtn.push_back(static_cast<unsigned char>(strtoul(ss.str().substr(2, 2).c_str(), nullptr, 16)));
     return rtn;
 }
 
