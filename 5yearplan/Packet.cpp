@@ -11,12 +11,8 @@ std::string Packet::getOutputString() const {
     std::string rtn;
     rtn.push_back(syn);
     rtn.append(data);
-
-    std::stringstream ss;
-    ss << std::setw(4) << std::hex  << crc;
-
-    rtn.push_back(static_cast<unsigned char>(strtoul(ss.str().substr(0, 2).c_str(), nullptr, 16)));
-    rtn.push_back(static_cast<unsigned char>(strtoul(ss.str().substr(2, 2).c_str(), nullptr, 16)));
+    rtn.push_back(crc >> 8);
+    rtn.push_back(0x00FF & crc);
     return rtn;
 }
 
