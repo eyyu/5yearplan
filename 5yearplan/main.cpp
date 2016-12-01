@@ -3,7 +3,6 @@
 // Tim Makimov, A009031109
 
 #define STRICT
-
 #include "Command.h"
 #pragma warning (disable: 4096)
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
@@ -41,34 +40,34 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			{
 				startConnnection(comPort, hwnd);
 				//configCommPort(hComm, comPort, hwnd);
-				Button_Enable(GetDlgItem(hwnd, BTN_CONNECT), FALSE);
-				Button_Enable(GetDlgItem(hwnd, BTN_DISCONNECT), TRUE);
-				Button_Enable(GetDlgItem(hwnd, BTN_ATTACH), TRUE);
+				buttonEnable();
+				break;
 			}
-			break;
 		}
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_DISCONNECT))
 		{
-			stopConnnection();
-			Button_Enable(GetDlgItem(hwnd, BTN_CONNECT), TRUE);
-			Button_Enable(GetDlgItem(hwnd, BTN_DISCONNECT), FALSE);
-			Button_Enable(GetDlgItem(hwnd, BTN_ATTACH), FALSE);
+			//show image
+			buttonDisable();
+			//stop image
 			break;
 		}
+		
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_ATTACH))
 		{
 			if (attach())
 			{
 				sendNewFile(filePath);
-				
 			}
 			break;
 		}
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_SEND))
 		{
-			GetWindowText(GetDlgItem(hwnd, EDIT_TX), message, 500);
-			//test Send button and the user's iput
-			Edit_SetText(GetDlgItem(hwnd, EDIT_RX), message);
+			const int bufferLength = ::GetWindowTextLength(GetDlgItem(hwnd, EDIT_TX)) + 1;
+			text.resize(bufferLength);
+			GetWindowText(GetDlgItem(hwnd, EDIT_TX), &text[0], bufferLength);
+			text.resize(bufferLength - 1);
+			SetWindowText(GetDlgItem(hwnd, EDIT_RX), text.c_str());
+			break;
 		}
 		switch (LOWORD(wParam))
 		{
@@ -98,9 +97,7 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		if (wParam == 27)
 		{
 			stopConnnection();
-			Button_Enable(GetDlgItem(hwnd, BTN_CONNECT), TRUE);
-			Button_Enable(GetDlgItem(hwnd, BTN_DISCONNECT), FALSE);
-			Button_Enable(GetDlgItem(hwnd, BTN_ATTACH), FALSE);
+			buttonDisable();
 		}
 		break;
 	case WM_DESTROY:	// Terminate program
@@ -114,19 +111,19 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 void configCommPort(HANDLE hComm, LPCSTR lpszCommName, HWND hwnd)
 {
-	cc.dwSize = sizeof(COMMCONFIG);
-	cc.wVersion = 0x100;
+	//cc.dwSize = sizeof(COMMCONFIG);
+	//cc.wVersion = 0x100;
 	GetCommConfig(hComm, &cc, &cc.dwSize);
 	if (!CommConfigDialog(lpszCommName, hwnd, &cc))
 	{
 		MessageBox(NULL, "Error connecting to COMM port", lpszCommName, MB_OK);
 		return;
 	}
-	if (!(SetCommState(hComm, &cc.dcb)))
+	/*if (!(SetCommState(hComm, &cc.dcb)))
 	{
 		MessageBox(NULL, "Error configuring comm settings", lpszCommName, MB_OK);
 		return;
-	}
+	}*/
 }
 
 BOOL attach()
@@ -200,4 +197,20 @@ INT_PTR CALLBACK comDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 		return TRUE;
 	}
 	return FALSE;
+}
+
+void buttonEnable()
+{
+	Button_Enable(GetDlgItem(hwnd1, BTN_CONNECT), FALSE);
+	Button_Enable(GetDlgItem(hwnd1, BTN_DISCONNECT), TRUE);
+	Button_Enable(GetDlgItem(hwnd1, BTN_ATTACH), TRUE);
+	Button_Enable(GetDlgItem(hwnd1, BTN_SEND), TRUE);
+}
+
+void buttonDisable()
+{
+	Button_Enable(GetDlgItem(hwnd1, BTN_CONNECT), TRUE);
+	Button_Enable(GetDlgItem(hwnd1, BTN_DISCONNECT), FALSE);
+	Button_Enable(GetDlgItem(hwnd1, BTN_ATTACH), FALSE);
+	Button_Enable(GetDlgItem(hwnd1, BTN_SEND), FALSE);
 }
