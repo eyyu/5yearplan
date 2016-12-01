@@ -21,37 +21,39 @@
 #define EDIT_TX				111//Editable textbox for TX input
 #define IDC_RX				112
 #define EDIT_RX				113//Read only textbox for RX output
-#define ATTACHMENT			134//holds name of the currently atttached file
+#define ATTACHMENT			114//holds name of the currently atttached file
 //************************************
 
 //************Buttons*****************
-#define BTN_CONNECT			114
-#define BTN_DISCONNECT		115
-#define BTN_ATTACH			116
-#define BTN_SEND			133
+#define BTN_CONNECT			115
+#define BTN_DISCONNECT		116
+#define BTN_ATTACH			117
+#define BTN_SEND			118
 //************************************
 
 //*******TX_STAT_GROUPBOX*************
-#define TX_STAT				117
-#define PACK_SENT			118 //Field to be populated with stats (# of packets sent)
-#define TX_STAT_SENT		119
-#define TX_STAT_ACK			120
-#define ACK_RECD			121//Field to be populated with stats (# of ACKs sent)
-#define TX_STAT_COMP		122
-#define TX_COMP				123
+#define TX_STAT				119
+#define PACK_SENT			120 //Field to be populated with stats (# of packets sent)
+#define TX_STAT_SENT		121
+#define TX_STAT_ACK			122
+#define ACK_RECD			123//Field to be populated with stats (# of ACKs sent)
+#define TX_STAT_COMP		124
+#define TX_COMP				125
 //************************************
 
 //*******RX_STAT_GROUPBOX*************
-#define RX_STAT				124
-#define PACK_RECD			125 //Field to be populated with stats (# of packets received)
-#define RX_STAT_RECD		126
-#define RX_STAT_ACK			127
-#define ACK_SENT			128//Field to be populated with stats (# of ACKs received)
-#define RX_STAT_COMP		129
-#define RX_COMP				130
+#define RX_STAT				126
+#define PACK_RECD			127 //Field to be populated with stats (# of packets received)
+#define RX_STAT_RECD		128
+#define RX_STAT_ACK			129
+#define ACK_SENT			130//Field to be populated with stats (# of ACKs received)
+#define RX_STAT_COMP		131
+#define RX_COMP				132
 //************************************
 
-#define HELP_COMDIALOG		131
-#define HELP_OK				132
+#define HELP_COMDIALOG		133
+#define HELP_OK				134
+
+
 
 
