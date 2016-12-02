@@ -25,14 +25,13 @@ void startRandomEnqTimer()
     randomEnqTimer.start();
 }
 
-// event driven
 void enqLine()
 {
-    //if (enqCount >= MAX_RETRIES)
-    //{
-    //    stopConnnection();
-    //    return;
-    //}
+    if (enqCount >= MAX_RETRIES)
+    {
+        stopConnnection();
+        return;
+    }
     writeChar(ENQ);
     return;
 }
@@ -66,21 +65,20 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 
 bool startConnectProc(HWND hDisplay, HWND hwnd)
 {
-	OVERLAPPED timeoutEvent;
-	memset((char *)&timeoutEvent, 0, sizeof(OVERLAPPED));
-	timeoutEvent.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
 	char inBuff[PACKET_SIZE];
 	DWORD nBytesRead, dwEvent, dwError;
 	COMSTAT cs;
+	bool timedout = false;
 
+	OVERLAPPED timeoutEvent;
 	OVERLAPPED osReader = { 0 };
 
-	// Create the overlapped event. Must be closed before exiting
-	// to avoid a handle leak.
+	memset((char *)&timeoutEvent, 0, sizeof(OVERLAPPED));
+	timeoutEvent.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-	if (osReader.hEvent == NULL) {
+	if (osReader.hEvent == NULL || timeoutEvent.hEvent == NULL) {
 		return false;
 	}
 
@@ -90,6 +88,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 		return false;
 	}
 
+	//check buffer the first time before looping 
 	if (TX.outGoingDataInBuffer())
 	{
 		randomEnqTimer.start();
@@ -98,7 +97,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 	{
 		idleStateTimer.start();
 	}
-	bool timedout = false;
+
 	while (isConnected)
 	{
 		if (!WaitCommEvent(hComm, &dwEvent, &timeoutEvent))
@@ -114,11 +113,15 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 
 				}
 				ResetEvent(timeoutEvent.hEvent);
-			}else{
+			}
+			else
+			{
+				//Anything in here? 
 			}
 			ClearCommError(hComm, &dwError, &cs);
 		}
-		else {
+		else 
+		{
 			timedout = false;
 		}
 
@@ -127,14 +130,17 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 			if ((dwEvent & EV_RXCHAR) && cs.cbInQue)
 			{
 				char chRead;
-				bool boolRead = false;
+				bool boolRead = false; 
+				// should read in a loop? to eliminate all intial ENQS? 
 				if (!ReadFile(hComm, &chRead, 1, &nBytesRead, &osReader))
 				{
 					if (GetLastError() == ERROR_IO_PENDING) {
 						if (WaitForSingleObject(osReader.hEvent, INFINITE) == WAIT_OBJECT_0)
 							if (GetOverlappedResult(hComm, &osReader, &nBytesRead, FALSE))
 								boolRead = true;
-					}else{
+					}
+					else
+					{
 						boolRead = false;
 					}
 				}
@@ -145,40 +151,37 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 				{
 					if (nBytesRead >= 1)
 					{
-						if (chRead == ACK || chRead == 'F')
+						if (chRead == ACK)
 						{
+							idleStateTimer.stop();
+							randomEnqTimer.stop();
 							if (isWaitingForAck)
 							{
-								idleStateTimer.stop();
-								randomEnqTimer.stop();
-								enqCount = 0;
 								isWaitingForAck = false;
+								enqCount = 0;
 								if (TX.outGoingDataInBuffer()) {
-									isWriting = true;
 									TX.sendPacket(hComm);
 								}
-								else
-								{
-									idleStateTimer.start();
-								}
+							}
+							else
+							{
+								idleStateTimer.start();
 							}
 						}
-						else if (chRead == ENQ
-							&& !isReading
-							&& !isWriting)
+						else if (chRead == ENQ)
 						{
 							idleStateTimer.stop();
 							randomEnqTimer.stop();
 							writeChar(ACK);
 							if (isWaitingForPacket)
 							{
-								if (packetCount < MAX_RETRIES
-									&& RX.start(hDisplay, hwnd, hComm))
+								if (RX.start(hDisplay, hwnd, hComm))
 								{
 									isWaitingForPacket = false;
 									packetCount = 0;
 								}
-								else {
+								else 
+								{
 									++packetCount;
 								}
 							}
@@ -188,9 +191,10 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 			}
 		}
 	}
+	idleStateTimer.stop();
+	randomEnqTimer.stop();
 	CloseHandle(timeoutEvent.hEvent);
 	CloseHandle(osReader.hEvent);
-
 	PurgeComm(hComm, PURGE_RXCLEAR);
 	return 0;
 }
@@ -206,7 +210,6 @@ bool stopConnnection()
         TX.closeTransmitter();
         RX.closeReceiption();
 		resetDataValues();
-        //connectedThread.join();
         PurgeComm(hComm, PURGE_TXABORT | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_RXCLEAR);
         CloseHandle(hComm);
         return true;
@@ -228,7 +231,6 @@ bool sendNewFile(LPCSTR filePath)
     if (isConnected)
     {
         TX.addFileToQueue(filePath);
-        enqLine();
         idleStateTimer.stop();
         randomEnqTimer.start();
         return true;
@@ -253,13 +255,14 @@ bool writeChar(const char c)
 	OVERLAPPED osWrite = { 0 };
 	DWORD dwWritten;
 	bool result = true;
-	char ch = 'A';
 	// Create this writes OVERLAPPED structure hEvent.
 	osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	
 	if (osWrite.hEvent == NULL) {
 		return false;
 	}
-    if (!WriteFile(hComm,
+    
+	if (!WriteFile(hComm,
                   &c,
                   1,
                   &dwWritten,
@@ -291,7 +294,7 @@ bool writeChar(const char c)
 			isWaitingForAck = true;
 		}
 	}
-	CloseHandle(osWrite.hEvent);
 
+	CloseHandle(osWrite.hEvent);
     return result;
 }
