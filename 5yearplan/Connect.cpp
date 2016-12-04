@@ -17,7 +17,6 @@
 -- NOTES:
 -- This is the main starting point for the communication once the port has been open.
 ------------------------------------------------------------------------------*/
-
 #include "Connect.h"
 
 void startRandomEnqTimer()
@@ -173,16 +172,12 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 							idleStateTimer.stop();
 							randomEnqTimer.stop();
 							writeChar(ACK);
+							PurgeComm(hComm, PURGE_RXCLEAR);
 							if (isWaitingForPacket)
 							{
 								if (RX.start(hDisplay, hwnd, hComm))
 								{
 									isWaitingForPacket = false;
-									packetCount = 0;
-								}
-								else 
-								{
-									++packetCount;
 								}
 							}
 						}
@@ -280,9 +275,7 @@ bool writeChar(const char c)
 
 
 		}
-	}/*else {
-		result = true;
-	}*/
+	}
 
 	if (result) {
 		if (c == ACK) {

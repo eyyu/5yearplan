@@ -1,3 +1,44 @@
+/*------------------------------------------------------------------------------
+-- SOURCE FILE: reception.h - receiption calss heaader
+--
+-- PROGRAM: 5yearplan
+--
+-- FUNCTIONS:
+-- static DWORD WINAPI readCharacters(LPVOID params);
+-- BOOL handleChar          (char);
+-- void writeCharToBuffer   (char);
+-- void displayChar         (char);
+-- BOOL saveBufferToFile    (void);
+-- void successSaveFile     (void);
+-- void failToSaveFile      (void);
+-- void cls                 (void);
+-- void resetProcess        (void);
+-- void startProcess        (HWND, std::string&);
+-- void sendACK             (HANDLE );
+-- BOOL waitForPacket       (HANDLE );
+-- BOOL retrievePacket      (HANDLE , std::vector<BYTE> &);
+-- BOOL parsePacket         (Packet &, std::vector<BYTE> &);
+-- BOOL validatePacket      (Packet &);
+-- void errorStat           (HWND );
+-- void packetTimeout       (void);
+-- BOOL start               (HWND , HWND , HANDLE);
+-- void closeReceiption     (void);
+--
+-- DATE: NOV. 09, 2016
+--
+-- REVISIONS: 
+-- Version 1.0.1.0 - [TK] - 2016/NOV/09 - created class 
+-- Version 2.0.1.0 - [TK] - 2016/NOV/28th - added overalpping class 
+--
+-- DESIGNER: Eva Yu & Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- NOTES:
+-- This is the receiption header for the reception class
+-- the receiption class is responsible for reading 
+-- and parsing incoming packets  
+------------------------------------------------------------------------------*/
 #pragma once
 
 #include <windows.h>

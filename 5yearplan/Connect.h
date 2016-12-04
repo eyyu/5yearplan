@@ -5,23 +5,35 @@
 --
 -- FUNCTIONS:
 -- *list all functions here!* 
--- [returnType] [funcName] (funcParams)
+-- bool startConnectProc	(HWND, HWND);
+-- bool startConnnection	(LPCTSTR, HWND);
+-- bool stopConnnection		(void);
+-- bool sendNewFile			(LPCSTR);
+-- bool sendNewData			(LPCSTR);
+-- bool writeChar			(const char);
+-- void enqLine				(void);
+-- void startRandomEnqTimer	(void);
+-- void resetDataValues		(void);
 --
 -- DATE: Nov. 09, 2016
 --
 -- REVISIONS: 
--- Version 1.2.
+-- Version 1.0.1.0 - [EY] - 2016/NOV/09  - created class 
+-- Version 1.0.1.5 - [EY] - 2016/NOV/15	 - turned class to classless 
+-- Version 2.0.1.0 - [TK] - 2016/NOV/28  - added overalpping class 
+-- Version 2.0.1.1 - [EY] - 2016/DEC/03  - fixed biasing issue    
 --
--- DESIGNER: Eva Yu
+-- DESIGNER: Eva Yu / John Agapeyev / Tim Makimov / Terry Kang
 --
 -- PROGRAMMER: Eva Yu
 --
 -- NOTES:
--- This is the main starting point for the communication once the port has been open.  
+-- This is the main starting point for the communication.
+-- the functions deal with idle state handling and the ENQ and ACK procedures in 
+-- idle state   
 ------------------------------------------------------------------------------*/
 #pragma once
 
-#include <thread>
 #include <Windows.h>
 
 #include "constants.h"
