@@ -37,15 +37,12 @@ std::vector<std::string> Transmitter::packetizeData(const std::string& data) con
     while (1) {
         if (temp.size() < DATA_SIZE) {
             if (temp.length() % DATA_SIZE) {
-                std::string remaining = temp.substr(packetNum * DATA_SIZE);
-                dataChunks.push_back(remaining.append(DATA_SIZE - remaining.length(), NULL_BYTE));
-            }
-            else {
+                dataChunks.push_back(temp.append(DATA_SIZE - temp.length(), NULL_BYTE));
+            } else {
                 dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
             }
             break;
-        }
-        else {
+        } else {
             dataChunks.emplace_back(temp, 0, DATA_SIZE);
             temp.erase(0, DATA_SIZE);
         }
@@ -81,24 +78,24 @@ void Transmitter::sendPacket(const HANDLE& commHandle) {
     std::string data = outputQueue.front().getOutputString();
     //Overlapped struct goes in last parameter to writefile call
 
-	OVERLAPPED osWrite = { 0 };
-	DWORD dwWritten;
-	bool result = false;
+    OVERLAPPED osWrite = { 0 };
+    DWORD dwWritten;
+    bool result = false;
 
-	// Create this writes OVERLAPPED structure hEvent.
-	osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	//if (!WriteFile(commHandle,
-	//	data.c_str(),
-	//	PACKET_SIZE,
-	//	&dwWritten,
-	//	&osWrite
-	//))
-	//{
-	//	if (GetLastError() == ERROR_IO_PENDING) {
-	//		WaitForSingleObject(osWrite.hEvent, INFINITE);
-	//		//GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE);
-	//	}
-	//}
+    // Create this writes OVERLAPPED structure hEvent.
+    osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    //if (!WriteFile(commHandle,
+    //  data.c_str(),
+    //  PACKET_SIZE,
+    //  &dwWritten,
+    //  &osWrite
+    //))
+    //{
+    //  if (GetLastError() == ERROR_IO_PENDING) {
+    //      WaitForSingleObject(osWrite.hEvent, INFINITE);
+    //      //GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE);
+    //  }
+    //}
     for (int i = 0; i < PACKET_SIZE; i++) {
         WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
     }
