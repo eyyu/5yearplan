@@ -4,6 +4,7 @@
 -- PROGRAM: 5yearplan
 --
 -- FUNCTIONS:
+-- PROCESS CLASS:
 -- static DWORD WINAPI readCharacters(LPVOID params);
 -- BOOL handleChar          (char);
 -- void writeCharToBuffer   (char);
@@ -14,6 +15,7 @@
 -- void cls                 (void);
 -- void resetProcess        (void);
 -- void startProcess        (HWND, std::string&);
+-- RECEPTION CLASS:
 -- void sendACK             (HANDLE );
 -- BOOL waitForPacket       (HANDLE );
 -- BOOL retrievePacket      (HANDLE , std::vector<BYTE> &);
@@ -38,6 +40,10 @@
 -- This is the receiption header for the reception class
 -- the receiption class is responsible for reading 
 -- and parsing incoming packets  
+-- this namespace also includes the PROCESS class
+    -- process is a sub class of the RX side. 
+    -- process creates its own thread and processes
+    -- the incoming packets after verification 
 ------------------------------------------------------------------------------*/
 #pragma once
 
@@ -45,16 +51,22 @@
 #include <vector>
 #include <string>
 #include <queue>
+
 #include "timer.h"
 #include "constants.h"
 #include "packet.h"
 
 namespace receive {
+    /**GLOBAL CONSTS**/
     static const DWORD TEXTBOX_HEIGTH = 200;
     static const DWORD TEXTBOX_WIDTH = 400;
-
+    
+    /*********************/
+    /**  PROCESS CLASSS **/
+    /*********************/
     class Process {
     private:
+        /**DATA MEMBERS**/
         std::queue<std::string> dataQueue;
         std::vector<char> writeBuffer;
         BOOL isProcessing = false;
@@ -64,6 +76,7 @@ namespace receive {
         int char_x;
         int char_y;
 
+        /**MEMBER FUNCTIONS**/
         static DWORD WINAPI readCharacters(LPVOID params);
         BOOL handleChar(char c);
         void writeCharToBuffer(char c);
@@ -77,15 +90,19 @@ namespace receive {
         void startProcess(HWND handleDisplayParam, std::string&);
     };
 
+    /***********************/
+    /**  RECEPTIONS CLASS **/
+    /***********************/
     class Reception {
     private:
+        /**DATA MEMBERS**/
         DWORD packetCounter;
         DWORD errorCounter;
         Process process;
 
         BOOL isPacketTimedOut = false;
 
-
+        /**MEMBER FUNCTIONS**/
         void sendACK(HANDLE handleCom);
         BOOL waitForPacket(HANDLE handleCom);
         BOOL retrievePacket(HANDLE handleCom, std::vector<BYTE> &buffer);
@@ -93,6 +110,7 @@ namespace receive {
         BOOL validatePacket(Packet &packet);
         void errorStat(HWND handleStat);
         void packetTimeout();
+
     public:
         BOOL start(HWND handleDisplay, HWND handleStat, HANDLE handleCom);
         void closeReceiption();
