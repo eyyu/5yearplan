@@ -136,9 +136,7 @@ void Transmitter::sendPacket(const HANDLE& commHandle) {
 
 void Transmitter::closeTransmitter() {
     retryCounter = 0;
-    while (!outputQueue.empty()) {
-        outputQueue.pop();
-    }
+    std::queue<Packet>().swap(outputQueue);
 }
 
 

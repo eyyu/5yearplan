@@ -20,7 +20,8 @@ namespace transmit {
         std::queue<Packet> outputQueue;
         int retryCounter = 0;
 
-        typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
+        //typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
+        typedef Timer<&ackTimeout, 858> AckTimer;
         AckTimer ackTimer;
 
         std::vector<std::string> packetizeData(const std::string& data) const;
