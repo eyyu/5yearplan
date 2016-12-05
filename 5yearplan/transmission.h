@@ -51,7 +51,8 @@ namespace transmit {
         std::queue<Packet> outputQueue;  
         int retryCounter = 0;           // dependent on MAX_RETRIES constant
 
-        typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
+        typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 2000> AckTimer;
+        //typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
         AckTimer ackTimer; // Timer Object to mearure timeout 
                            // for ACK after sending packet  
 
