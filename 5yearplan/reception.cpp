@@ -1,9 +1,50 @@
-
+/*------------------------------------------------------------------------------
+-- SOURCE FILE: reception.cpp - the Rx Class and Process Class
+--
+-- PROGRAM: 5yearplan
+--
+-- FUNCTIONS:
+-- 
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [TK] - 2016/NOV/19 - Creted Function
+-- 
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- NOTES:
+-- this is the defition for receptions class and Process Class 
+------------------------------------------------------------------------------*/
 #include "reception.h"
 #include "winmenu2.h"
 
 using namespace receive;
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: start
+--
+-- DATE: nov. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [TK] - 2016/nov/19 - created function 
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: BOOl start (HWND, HWND, HANDLE)
+-- HWND
+-- HWND
+-- HANDLE 
+--
+-- RETURNS: 
+--
+-- NOTES:
+-- the start process for recieveing a packet 
+--------------------------------------------------------------------------*/
 BOOL Reception::start(HWND handleDisplay, HWND handleStat, HANDLE handleCom) {
 	Packet packet;
 	std::vector<char> buffer;
@@ -24,6 +65,27 @@ BOOL Reception::start(HWND handleDisplay, HWND handleStat, HANDLE handleCom) {
 	return false;
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: sendACK
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function 
+--
+-- DESIGNER: Terry Kang	
+--
+-- PROGRAMMER: Terry Kang	
+--
+-- INTERFACE: void sendACK (HANDLE)
+-- HANDLE 	handltetoComm
+--
+-- RETURNS: 
+-- RETURN
+--
+-- NOTES:
+-- NOTES
+--------------------------------------------------------------------------*/
 void Reception::sendACK(HANDLE handleCom) {
 	char ch = ACK;
 	DWORD dwWritten;
@@ -110,25 +172,25 @@ BOOL Reception::waitForPacket(HANDLE handleCom) {
 
 	//   if (!SetCommMask(handleCom, EV_RXCHAR)) // Set event listener for RX_CHAR, occurs when a message comes from the port.
 	//       MessageBox(NULL, "SetCommMask", "Error", MB_OK | MB_ICONINFORMATION);
-	//while (1) {
-	//	if (WaitCommEvent(handleCom, &dwCommEvent, &Timeout_Event))
-	//	{ // wait for RXCHAR event.
-	//		return true;
-	//	}
-	//	else
-	//	{
-	//		if (GetLastError() == ERROR_IO_PENDING)
-	//		{
-	//			if (WaitForSingleObject(Timeout_Event.hEvent, (DWORD)RECEPTION_TIMEOUT) == WAIT_OBJECT_0)
-	//			{
-	//				return true;
-	//			}
-	//			else {
-	//				return false;
-	//			}
-	//		}
-	//	}
-	//}
+	// while (1) {
+	// 	if (WaitCommEvent(handleCom, &dwCommEvent, &Timeout_Event))
+	// 	{ // wait for RXCHAR event.
+	// 		return true;
+	// 	}
+	// 	else
+	// 	{
+	// 		if (GetLastError() == ERROR_IO_PENDING)
+	// 		{
+	// 			if (WaitForSingleObject(Timeout_Event.hEvent, (DWORD)RECEPTION_TIMEOUT) == WAIT_OBJECT_0)
+	// 			{
+	// 				return true;
+	// 			}
+	// 			else {
+	// 				return false;
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 
 	CloseHandle(Timeout_Event.hEvent);

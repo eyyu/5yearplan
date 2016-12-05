@@ -1,3 +1,23 @@
+/*------------------------------------------------------------------------------
+-- SOURCE FILE: Transmission.cpp - transmits the packets
+--
+-- PROGRAM: 5yearplan
+--
+-- FUNCTIONS:
+-- 
+--
+-- DATE: NOV. 12, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [JA] - 2016/NOV/12 - Created Functions 
+
+-- DESIGNER: JOHN AGAPEYEV
+--
+-- PROGRAMMER: JOHN AGAPEYEV
+--
+-- NOTES:
+-- NOTES
+------------------------------------------------------------------------------*/
 #include <vector>
 #include <string>
 #include <cstdint>

@@ -23,11 +23,46 @@
 
 #include "Connect.h"
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: startRandomEnqTimer
+--
+-- DATE: NOV.19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - DESCRIPTION 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: void startRandomEnqTimer (void)
+--
+--
+-- NOTES:
+-- starts A timer that runs on a random time between 0 - 100 ms 
+--------------------------------------------------------------------------*/
 void startRandomEnqTimer()
 {
     randomEnqTimer.start();
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: enqLine
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - created function 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: void enqLine (void)
+--
+-- NOTES:
+-- this is called by the Random Enq timer to Ene the line
+--------------------------------------------------------------------------*/
 void enqLine()
 {
 	if (!isReading && !isWriting)
@@ -42,6 +77,27 @@ void enqLine()
     return;
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: startConnection
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - cretated function 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: bool startConnection (LPCSTR, HWND)
+-- LPCSTR 	string representnf the address of the com port
+-- HWND 	handle to the display window
+--
+-- RETURNS: 
+--
+-- NOTES:
+-- this is called initiall when the user clicks "connect"
+--------------------------------------------------------------------------*/
 bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 {
 	hComm = CreateFile(commPortAddress,
@@ -72,6 +128,30 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 	
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: startConnectProc
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - created event driven IO 
+-- Version 2.0 - [TK] - 2016/NOV/28 - added overlapped features 
+-- Version 2.0 - [EY] - 2016/NOV/28 - ensured proper flags and timer set
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: bool startConnectProc (functionParams)
+-- HWND 	handle tothe main window	
+-- HWND 	handle to the display window
+--
+-- RETURNS: 
+-- a boolean value to inidicae success / failure 
+--
+-- NOTES:
+-- NOTES
+--------------------------------------------------------------------------*/
 bool startConnectProc(HWND hDisplay, HWND hwnd)
 {
 
@@ -246,6 +326,27 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 	return 0;
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: stopConnection
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - creted function 
+-- Version 1.5 - [EY] - 2016/NOV/19 - added sleep to ensure complete timeout 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: bool stopConnection (void)
+--
+-- RETURNS: 
+-- boolean to indicate success / fail of program
+--
+-- NOTES:
+-- called when port needs to close
+--------------------------------------------------------------------------*/
 bool stopConnnection()
 {
     if (isConnected)
@@ -264,6 +365,25 @@ bool stopConnnection()
 
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: resetDataValues
+--
+-- DATE: NOV. 30, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/30 - created function 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: void resetDataValues (void)
+--
+-- RETURNS: 
+--
+-- NOTES:
+-- called to reset any flags and values used inthe thread procedure
+--------------------------------------------------------------------------*/
 void resetDataValues()
 {
     isWriting = false;
@@ -273,30 +393,101 @@ void resetDataValues()
     isWaitingForAck = false;
     enqCount = 0;
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: sendNewFile
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - DESCRIPTION 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: bool sendNewFile (LPCSTR)
+-- LPCSTR complete file path as string
+--
+-- RETURNS: 
+--
+-- NOTES:
+-- calls transmitter object and passes new file to it. 
+-- if another process is not going on right now, it will immediately start the enqTimer
+--------------------------------------------------------------------------*/
 bool sendNewFile(LPCSTR filePath)
 {
     if (isConnected)
     {
         TX.addFileToQueue(filePath);
-        idleStateTimer.stop();
-        randomEnqTimer.start();
+        if(!isReading
+        	&& !isWriting)
+        {
+	        idleStateTimer.stop();
+	        randomEnqTimer.start();
+        }
         return true;
     }
     return false;
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: sendNewData
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - created function 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: bool sendNewData (LPCSTR)
+-- LPCSTR the user typed data
+--
+-- RETURNS: 
+--
+-- NOTES:
+-- this sends user typed data 
+--------------------------------------------------------------------------*/
 bool sendNewData(LPCSTR dataString)
 {
     if (isConnected)
     {
         TX.addDataToQueue(dataString);
-        idleStateTimer.stop();
-        randomEnqTimer.start();
+        if(!isReading
+        	&& !isWriting)
+        {
+	        idleStateTimer.stop();
+	        randomEnqTimer.start();
+        }
         return true;
     }
     return false;
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: writeChar
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [EY] - 2016/NOV/19 - created function 
+-- Version 1.0 - [TK] - 2016/NOV/19 - added overlapped 
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: bool writeChar (const char)
+-- const char {10:desc}
+--
+-- RETURNS: 
+--
+-- NOTES:
+-- writes an enq or ack char to line
+--------------------------------------------------------------------------*/
 bool writeChar(const char c)
 {
 	OVERLAPPED osWrite = { 0 };
