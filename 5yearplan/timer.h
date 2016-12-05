@@ -1,3 +1,24 @@
+/*------------------------------------------------------------------------------
+-- SOURCE FILE: timer.h - template headers for timer classes
+--
+-- PROGRAM: 5yearplan
+--
+-- FUNCTIONS:
+-- 
+--
+-- DATE: NOV 12, 2016
+--
+-- REVISIONS: 
+-- Version 1.0 - [JA] - 2016/NOV/12 - created timer headre
+-- Version 2.0 - [JA] - 2016/NOV/16 - fixed timer headers to not take class and scoped funcion pointer 
+--
+-- DESIGNER: John Agapeyev
+--
+-- PROGRAMMER: John Agapeyev
+--
+-- NOTES:
+-- Timer classes here take an unsigned long representing the number of milliseconds the timer will count for
+------------------------------------------------------------------------------*/
 #pragma once
 
 #include <thread>
@@ -6,7 +27,6 @@
 #include <condition_variable>
 
 /*
-Timer classes here take an unsigned long representing the number of milliseconds the timer will count for
 */
 
 //Random timer
