@@ -9,17 +9,38 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
+/*--------------------------------------------------------------------------
+-- FUNCTION:  WinMain
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- INTERFACE: int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+--
+-- RETURNS: If the function succeeds, terminating when it receives a WM_QUIT message,
+--			it should return the exit value contained in that message's wParam parameter.
+--			If the function terminates before entering the message loop, it should return zero.
+--
+-- NOTES: Retrieves messages from message loop translating incoming messages and dispatching them to the application's message
+procedure
+--------------------------------------------------------------------------*/
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspszCmdParam, int nCmdShow)
 {
 	hInstance = hInst;
 	hwnd1 = CreateDialog(hInst, MAKEINTRESOURCE(IDD_DIALOG_MAIN), NULL, WndProc);
 	HMENU hMenu = LoadMenu(hInst, MAKEINTRESOURCE(MENU_MYMENU));
 	SetMenu(hwnd1, hMenu);
-
+	
 	// Display & update window
 	ShowWindow(hwnd1, nCmdShow);
 	UpdateWindow(hwnd1);
-
+	
 	while (GetMessage(&Msg, NULL, 0, 0))
 	{
 		TranslateMessage(&Msg);
@@ -27,7 +48,24 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hprevInstance, LPSTR lspszCmdParam
 	}
 	return Msg.wParam;
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION:  WndProc
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 2.3
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- INTERFACE: BOOL CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM)
+--
+-- RETURNS: LRESULT - the result of the message processing and depends on the message sent
+--
+-- NOTES: Processes mesages received from WinMain
+--------------------------------------------------------------------------*/
 BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	switch (Message)
@@ -39,20 +77,22 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			if (comPort[0] != 0)
 			{
 				startConnnection(comPort, hwnd);
-				//configCommPort(hComm, comPort, hwnd);
 				buttonEnable();
-				break;
 			}
+			break;
 		}
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_DISCONNECT))
 		{
 			//show image
-			buttonDisable();
-			stopConnnection();
-			//stop image
+			int msgboxID = MessageBox(NULL, "Are you sure you want to disconnect? That may take several seconds", "Disconnect?", MB_OKCANCEL| MB_ICONQUESTION);
+			if (msgboxID == IDOK)
+			{
+				buttonDisable();
+				//progressBar();
+				stopConnnection();
+			}
 			break;
 		}
-		
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_ATTACH))
 		{
 			if (attach())
@@ -63,11 +103,8 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		}
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_SEND))
 		{
-			const int bufferLength = ::GetWindowTextLength(GetDlgItem(hwnd, EDIT_TX)) + 1;
-			text.resize(bufferLength);
-			GetWindowText(GetDlgItem(hwnd, EDIT_TX), &text[0], bufferLength);
-			text.resize(bufferLength - 1);
-			SetWindowText(GetDlgItem(hwnd, EDIT_RX), text.c_str());
+			progressBar();
+			generateString();
 			break;
 		}
 		switch (LOWORD(wParam))
@@ -75,21 +112,16 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		case IDCANCEL:
 			DestroyWindow(hwnd);
 			break;
-
-		//case MENU_NEW_CON:
-		//	hwnd2 = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_COMDIALOG), hwnd, comDialogProc); // a dialog for the list of available com port.
-		//	break;
-
 		case MENU_PROP: // popup a dialog for changing the properties of selected com port.
 				configCommPort(hComm, comPort, hwnd);
 			break;
-
 		case MENU_HELP:
 			MessageBox(NULL,
 				"Click CONNECT to connect to the default COMM port or select a COMM port from settings and then click CONNECT.",
-				"", MB_OK);
+				"", MB_OK | MB_ICONINFORMATION);
 			break;
 		case MENU_EXIT:
+			stopConnnection();
 			PostQuitMessage(0);
 			break;
 		}
@@ -102,6 +134,7 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	case WM_DESTROY:	// Terminate program
+		stopConnnection();
 		PostQuitMessage(0);
 		break;
 	default:
@@ -109,24 +142,51 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	}
 	return FALSE;
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION:  configCommPort
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- INTERFACE: void configCommPort(HANDLE, LPCSTR, HWND)
+--
+-- RETURNS: void
+--
+-- NOTES: Configures the DCB structure of the created Comm Port (BPS, Data bits, Parity, Stop bits, Flow Control)
+--------------------------------------------------------------------------*/
 void configCommPort(HANDLE hComm, LPCSTR lpszCommName, HWND hwnd)
 {
-	//cc.dwSize = sizeof(COMMCONFIG);
-	//cc.wVersion = 0x100;
 	GetCommConfig(hComm, &cc, &cc.dwSize);
 	if (!CommConfigDialog(lpszCommName, hwnd, &cc))
 	{
-		MessageBox(NULL, "Error connecting to COMM port", lpszCommName, MB_OK);
+		MessageBox(NULL, "Error connecting to COMM port", lpszCommName, MB_OK | MB_ICONERROR);
 		return;
 	}
-	/*if (!(SetCommState(hComm, &cc.dcb)))
-	{
-		MessageBox(NULL, "Error configuring comm settings", lpszCommName, MB_OK);
-		return;
-	}*/
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION:  attach
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- INTERFACE: BOOL attach()
+--
+-- RETURNS: true if file is openned and it's path is stored in ofn structure, else returns false
+--
+-- NOTES: Stores fie path in ofn structure, global variable filePath stores the file path
+--------------------------------------------------------------------------*/
 BOOL attach()
 {
 	// open a file name
@@ -148,12 +208,30 @@ BOOL attach()
 		filePath = ofn.lpstrFile;
 		// Now simply display the file name 
 		Edit_SetText(GetDlgItem(hwnd1, ATTACHMENT), filePath);
-		//MessageBox(NULL, filePath, "File Name", MB_OK);
 		return true;
 	}
 	return false;
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION: availableCOM
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov, Terry Kang
+--
+-- INTERFACE: void availableCOM(HWND hwnd)
+--
+-- RETURNS: void
+--
+-- NOTES: 
+--	This function looks for the list of available com ports and populate the combobox from which
+--	users can select the com port that they want to connect to.
+--------------------------------------------------------------------------*/
 void availableCOM(HWND hwnd) {
 	TCHAR szDevices[65535];
 	unsigned long dwChars = QueryDosDevice(NULL, szDevices, 65535); // get all available devices.
@@ -172,7 +250,27 @@ void availableCOM(HWND hwnd) {
 	}
 	SendDlgItemMessage(hwnd, IDM_COM_COMBOBOX, CB_SETCURSEL, (WPARAM)0, 0L); // set focus on the first item in the list.
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION: comDialogProc
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov, Terry Kang
+--
+-- INTERFACE: INT_PTR CALLBACK comDialogProc(HWND, UINT, WPARAM, LPARAM)
+--
+-- RETURNS: TRUE if it processed the message, and FALSE if it did not.
+-- If the dialog box procedure returns FALSE, the dialog manager performs the default dialog operation in response to the message.
+--
+-- NOTES:
+-- Application-defined callback function used with the CreateDialog and DialogBox families of functions.
+-- It processes messages that is from the dialog box for selecting available com port.
+--------------------------------------------------------------------------*/
 INT_PTR CALLBACK comDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
 	case WM_INITDIALOG:
@@ -199,7 +297,25 @@ INT_PTR CALLBACK comDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 	}
 	return FALSE;
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION: buttonEnable
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- INTERFACE: void buttonEnable()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function enables Disconnect, Browse and Send buttons and disables Connect button if Comm Port is connected
+--------------------------------------------------------------------------*/
 void buttonEnable()
 {
 	Button_Enable(GetDlgItem(hwnd1, BTN_CONNECT), FALSE);
@@ -207,11 +323,62 @@ void buttonEnable()
 	Button_Enable(GetDlgItem(hwnd1, BTN_ATTACH), TRUE);
 	Button_Enable(GetDlgItem(hwnd1, BTN_SEND), TRUE);
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION: buttonDisable
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- INTERFACE: void buttonDisable()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function disables Disconnect, Browse and Send buttons and enables Connect butto if Comm Port is connected
+--------------------------------------------------------------------------*/
 void buttonDisable()
 {
 	Button_Enable(GetDlgItem(hwnd1, BTN_CONNECT), TRUE);
 	Button_Enable(GetDlgItem(hwnd1, BTN_DISCONNECT), FALSE);
 	Button_Enable(GetDlgItem(hwnd1, BTN_ATTACH), FALSE);
 	Button_Enable(GetDlgItem(hwnd1, BTN_SEND), FALSE);
+}
+/*--------------------------------------------------------------------------
+-- FUNCTION: generateString
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 1.0
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- INTERFACE: void generateString
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- Stores user's input into a global string
+--------------------------------------------------------------------------*/
+void generateString()
+{
+	const int bufferLength = GetWindowTextLength(GetDlgItem(hwnd1, EDIT_TX)) + 1;
+	text.resize(bufferLength);
+	GetWindowText(GetDlgItem(hwnd1, EDIT_TX), &text[0], bufferLength);
+	text.resize(bufferLength - 1);
+	SetWindowText(GetDlgItem(hwnd1, EDIT_RX), text.c_str()); 
+}
+
+void progressBar()
+{
+	SetWindowLong(GetDlgItem(hwnd1, IDC_PROGRESS), GWL_STYLE, GetWindowLong(GetDlgItem(hwnd1, IDC_PROGRESS), GWL_STYLE) | PBS_MARQUEE);
+	SendDlgItemMessage(hwnd1, IDC_PROGRESS, PBM_SETMARQUEE, (WPARAM)TRUE, 0);
 }
