@@ -53,7 +53,7 @@
 
 #define HELP_COMDIALOG		133
 #define HELP_OK				134
-
+#define IDC_PROGRESS		135
 
 
 
