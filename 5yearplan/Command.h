@@ -22,6 +22,7 @@
 #include "winmenu2.h"
 #include "Connect.h"
 #include <string>
+#include <Commctrl.h>
 
 using namespace std;
 
@@ -45,3 +46,5 @@ void configCommPort(HANDLE, LPCSTR, HWND);
 void availableCOM(HWND);
 void buttonEnable();
 void buttonDisable();
+void generateString();
+void progressBar();
