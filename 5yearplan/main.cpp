@@ -48,6 +48,7 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		{
 			//show image
 			buttonDisable();
+			stopConnnection();
 			//stop image
 			break;
 		}

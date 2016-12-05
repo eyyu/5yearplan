@@ -34,19 +34,21 @@ std::vector<std::string> Transmitter::packetizeData(const std::string& data) con
 
     std::string temp(data);
 
-    while (1) {
-        if (temp.size() < DATA_SIZE) {
-            if (temp.length() % DATA_SIZE) {
-                dataChunks.push_back(temp.append(DATA_SIZE - temp.length(), NULL_BYTE));
-            } else {
-                dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
-            }
-            break;
-        } else {
-            dataChunks.emplace_back(temp, 0, DATA_SIZE);
-            temp.erase(0, DATA_SIZE);
-        }
-    }
+	while (1) {
+		if (temp.size() < DATA_SIZE) {
+			if (temp.length() % DATA_SIZE) {
+				dataChunks.push_back(temp.append(DATA_SIZE - temp.length(), NULL_BYTE));
+			}
+			else {
+				dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
+			}
+			break;
+		}
+		else {
+			dataChunks.emplace_back(temp, 0, DATA_SIZE);
+			temp.erase(0, DATA_SIZE);
+		}
+	}
     return dataChunks;
 }
 
@@ -65,78 +67,146 @@ void Transmitter::addFileToQueue(const std::string& filePath) {
 }
 
 void Transmitter::sendPacket(const HANDLE& commHandle) {
-    timeoutReached = false;
-    OVERLAPPED over = {0};
-    over.hEvent = CreateEvent(nullptr, false, false, nullptr);
-    SetCommMask(commHandle, EV_RXCHAR);
+	timeoutReached = false;
+	OVERLAPPED over = { 0 };
+	over.hEvent = CreateEvent(nullptr, false, false, nullptr);
+	SetCommMask(commHandle, EV_RXCHAR);
 
-    if (outputQueue.empty()) {
-        //Error, tried to send packet that doesn't exist
-        throw std::runtime_error("Tried to send a packet from an empty queue");
-    }
-    outputQueue.front().data;
-    std::string data = outputQueue.front().getOutputString();
-    //Overlapped struct goes in last parameter to writefile call
+	if (outputQueue.empty()) {
+		//Error, tried to send packet that doesn't exist
+		throw std::runtime_error("Tried to send a packet from an empty queue");
+	}
+	outputQueue.front().data;
+	std::string data = outputQueue.front().getOutputString();
+	//Overlapped struct goes in last parameter to writefile call
 
-    OVERLAPPED osWrite = { 0 };
-    DWORD dwWritten;
-    bool result = false;
+	OVERLAPPED osWrite = { 0 };
+	OVERLAPPED osReader = { 0 };
 
-    // Create this writes OVERLAPPED structure hEvent.
-    osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    //if (!WriteFile(commHandle,
-    //  data.c_str(),
-    //  PACKET_SIZE,
-    //  &dwWritten,
-    //  &osWrite
-    //))
-    //{
-    //  if (GetLastError() == ERROR_IO_PENDING) {
-    //      WaitForSingleObject(osWrite.hEvent, INFINITE);
-    //      //GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE);
-    //  }
+	DWORD dwWritten;
+	bool result = false;
+
+	// Create this writes OVERLAPPED structure hEvent.
+	osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+	//if (!WriteFile(commHandle,
+	//	data.c_str(),
+	//	PACKET_SIZE,
+	//	&dwWritten,
+	//	&osWrite
+	//))
+	//{
+	//	if (GetLastError() == ERROR_IO_PENDING) {
+	//		WaitForSingleObject(osWrite.hEvent, INFINITE);
+	//		//GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE);
+	//	}
+	//}
+	for (int i = 0; i < PACKET_SIZE; i++) {
+		WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
+	}
+	//ackTimer.start();
+
+	std::string buf;
+	DWORD success;
+	DWORD test;
+	DWORD dwEvent;
+	char chRead;
+	bool boolReadAck = false;
+	while (1) {
+		if (!WaitCommEvent(commHandle, &dwEvent, &over))
+		{
+			if (GetLastError() == ERROR_IO_PENDING)
+			{
+				if (WaitForSingleObject(over.hEvent, (DWORD)DISCONNECT_TIMEOUT) == WAIT_OBJECT_0)
+				{
+					if (GetOverlappedResult(commHandle, &over, &test, FALSE)) {
+						if (!ReadFile(commHandle, &chRead, 1, &success, &osReader))
+						{
+							if (GetLastError() == ERROR_IO_PENDING) {
+								if (WaitForSingleObject(over.hEvent, (PACKET_SIZE / BAUD_RATE) * 1000) == WAIT_OBJECT_0)
+									if (GetOverlappedResult(commHandle, &osReader, &success, FALSE))
+										if (success && chRead == ACK) {
+											boolReadAck = true;
+										}
+							}
+						}
+						else
+							if (success && chRead == ACK) {
+								boolReadAck = true;
+							}
+					}
+				}
+			}
+		}
+		else {
+			if (!ReadFile(commHandle, &chRead, 1, &success, &osReader))
+			{
+				if (GetLastError() == ERROR_IO_PENDING) {
+					if (WaitForSingleObject(over.hEvent, (PACKET_SIZE / BAUD_RATE) * 1000) == WAIT_OBJECT_0)
+						if (GetOverlappedResult(commHandle, &osReader, &success, FALSE))
+							if (success && chRead == ACK) {
+								boolReadAck = true;
+							}
+				}
+			}
+			else
+				if (success && chRead == ACK) {
+					boolReadAck = true;
+				}
+		}
+
+		if (!boolReadAck) {
+			retryCounter++;
+			if (retryCounter > MAX_RETRIES) {
+				closeTransmitter();
+				return;
+			}
+			for (int i = 0; i < PACKET_SIZE; i++) {
+				WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
+			}
+		}
+		else {
+			break;
+		}
+	}
+	outputQueue.pop();
+
+    //while (true) {
+    //    while (!timeoutReached) {
+    //        if (WaitCommEvent(commHandle, nullptr, &over)) {
+    //            ReadFile(commHandle, &buf, 1, &success, &over);
+    //            if (success && buf.front() == ACK) {
+    //                ackTimer.stop();
+    //                break;
+    //            }
+    //        }
+    //    }
+
+    //    ackTimer.stop();
+
+    //    if (timeoutReached) {
+    //        retryCounter++;
+    //        if (retryCounter > MAX_RETRIES) {
+    //            closeTransmitter();
+    //            return;
+    //        }
+    //        for (int i = 0; i < PACKET_SIZE; i++) {
+    //            WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
+    //        }
+    //        ackTimer.start();
+    //    } else {
+    //        break;
+    //    }
     //}
-    for (int i = 0; i < PACKET_SIZE; i++) {
-        WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
-    }
-    ackTimer.start();
-
-    std::string buf;
-    DWORD success;
-
-    while (true) {
-        while (!timeoutReached) {
-            if (WaitCommEvent(commHandle, nullptr, &over)) {
-                ReadFile(commHandle, &buf, 1, &success, &over);
-                if (success && buf.front() == ACK) {
-                    ackTimer.stop();
-                    break;
-                }
-            }
-        }
-
-        ackTimer.stop();
-
-        if (timeoutReached) {
-            retryCounter++;
-            if (retryCounter > MAX_RETRIES) {
-                closeTransmitter();
-                return;
-            }
-            for (int i = 0; i < PACKET_SIZE; i++) {
-                WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
-            }
-            ackTimer.start();
-        } else {
-            break;
-        }
-    }
-    outputQueue.pop();
+    //outputQueue.pop();
 }
 
 void Transmitter::closeTransmitter() {
     retryCounter = 0;
-    std::queue<Packet>().swap(outputQueue);
+    while (!outputQueue.empty()) {
+        outputQueue.pop();
+    }
 }
 
 

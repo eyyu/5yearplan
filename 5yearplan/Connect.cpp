@@ -17,6 +17,10 @@
 -- NOTES:
 -- This is the main starting point for the communication once the port has been open.
 ------------------------------------------------------------------------------*/
+
+#include <thread>
+#include <chrono>
+
 #include "Connect.h"
 
 void startRandomEnqTimer()
@@ -26,40 +30,46 @@ void startRandomEnqTimer()
 
 void enqLine()
 {
-    if (enqCount >= MAX_RETRIES)
-    {
-        stopConnnection();
-        return;
-    }
-    writeChar(ENQ);
+	if (!isReading && !isWriting)
+	{
+		if (enqCount >= MAX_RETRIES)
+		{
+			stopConnnection();
+			return;
+		}
+		writeChar(ENQ);
+	}
     return;
 }
 
 bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 {
-    COMMCONFIG cc;
+	hComm = CreateFile(commPortAddress,
+		GENERIC_WRITE | GENERIC_READ,  // access ( write)
+		0,                             // (share) 0:cannot share the COM port
+		0,                             // security  (None)
+		OPEN_EXISTING,
+		FILE_FLAG_OVERLAPPED,   // we want overlapped operation
+		0                               // no templates file for COM port...
+		);
+	//catch errors 
+	if (hComm == INVALID_HANDLE_VALUE)
+	{
+		MessageBox(NULL, "CANNOT OPEN COMM PORT ", "ERROR", MB_OK);
+		return false;
+	}
+	COMMCONFIG cc;
     GetDefaultCommConfig(commPortAddress, &cc, &cc.dwSize);
     cc.dcb.BaudRate = 9600;
-    hComm = CreateFile(commPortAddress,
-                       GENERIC_WRITE | GENERIC_READ,  // access ( write)
-                       0,                             // (share) 0:cannot share the COM port
-                       0,                             // security  (None)
-                       OPEN_EXISTING,
-                       FILE_FLAG_OVERLAPPED,   // we want overlapped operation
-                       0                               // no templates file for COM port...
-                       );
-    //catch errors 
-    if (hComm == INVALID_HANDLE_VALUE)
-    {
-        MessageBox(NULL, "CANNOT OPEN COMM PORT ", "ERROR", MB_OK);
-        return false;
-    }
-	if(CommConfigDialog(commPortAddress, hwnd, &cc))
+
+	if (CommConfigDialog(commPortAddress, hwnd, &cc)) {
 		SetCommState(hComm, &cc.dcb);
-    isConnected = true;
-    connectedThread = std::thread(startConnectProc, hwnd, hwnd); // NULL to be replaces with stats Display!!
-    connectedThread.detach(); // run connected threas in background
-    return true;
+		isConnected = true;
+		connectedThread = std::thread(startConnectProc, hwnd, hwnd); // NULL to be replaces with stats Display!!
+		connectedThread.detach(); // run connected threas in background
+		return true;
+	}
+	
 }
 
 bool startConnectProc(HWND hDisplay, HWND hwnd)
@@ -97,6 +107,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 		idleStateTimer.start();
 	}
 
+
 	while (isConnected)
 	{
 		if (!WaitCommEvent(hComm, &dwEvent, &timeoutEvent))
@@ -105,7 +116,10 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 			{
 				if (WaitForSingleObject(timeoutEvent.hEvent, (DWORD)DISCONNECT_TIMEOUT) == WAIT_OBJECT_0)
 				{
-					timedout = false;
+					if (GetOverlappedResult(hComm, &timeoutEvent, &nBytesRead, FALSE))
+						timedout = false;
+					else
+						timedout = true;
 				}
 				else {
 					timedout = true;
@@ -152,33 +166,70 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 					{
 						if (chRead == ACK)
 						{
-							idleStateTimer.stop();
 							randomEnqTimer.stop();
+							idleStateTimer.stop();
 							if (isWaitingForAck)
 							{
 								isWaitingForAck = false;
 								enqCount = 0;
 								if (TX.outGoingDataInBuffer()) {
+									isWriting = true;
 									TX.sendPacket(hComm);
+									isWriting = false;
 								}
+								else
+								{
+									std::this_thread::sleep_for(std::chrono::milliseconds(RECEPTION_TIMEOUT));
+									idleStateTimer.start();
+								}
+							}
+							
+						}
+						//else if (chRead == ENQ)
+						//{
+						//	idleStateTimer.stop();
+						//	randomEnqTimer.stop();
+						//	writeChar(ACK);
+						//	idleStateTimer.start();
+						//}
+						//else if (isWaitingForPacket)
+						//{
+
+						//	if (RX.start(hDisplay, hwnd, hComm))
+						//	{	
+						//		idleStateTimer.stop();
+						//		isWaitingForPacket = false;
+						//	}
+						//}
+						else if (chRead == ENQ)
+						{
+							randomEnqTimer.stop();
+							idleStateTimer.stop();
+							PurgeComm(hComm, PURGE_RXCLEAR);
+							writeChar(ACK);
+							if (isWaitingForPacket)
+							{
+								isReading = true;
+								if (RX.start(hDisplay, hwnd, hComm))
+								{
+									isReading = false;
+									isWaitingForPacket = false;
+									packetCount = 0;
+
+								}
+								else
+								{
+									isReading = false;
+									++packetCount;
+								}
+							}
+							if (TX.outGoingDataInBuffer())
+							{
+								randomEnqTimer.start();
 							}
 							else
 							{
 								idleStateTimer.start();
-							}
-						}
-						else if (chRead == ENQ)
-						{
-							idleStateTimer.stop();
-							randomEnqTimer.stop();
-							writeChar(ACK);
-							PurgeComm(hComm, PURGE_RXCLEAR);
-							if (isWaitingForPacket)
-							{
-								if (RX.start(hDisplay, hwnd, hComm))
-								{
-									isWaitingForPacket = false;
-								}
 							}
 						}
 					}
@@ -186,6 +237,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 			}
 		}
 	}
+
 	idleStateTimer.stop();
 	randomEnqTimer.stop();
 	CloseHandle(timeoutEvent.hEvent);
@@ -199,7 +251,7 @@ bool stopConnnection()
     if (isConnected)
     {
 		idleStateTimer.stop();
-		randomEnqTimer.stop();
+		//randomEnqTimer.stop();
         isConnected = false;
 		Sleep(DISCONNECT_TIMEOUT);
         TX.closeTransmitter();
@@ -267,13 +319,17 @@ bool writeChar(const char c)
 		if (GetLastError() != ERROR_IO_PENDING) {
 			result = false;
 		}
-		else {
-			if (WaitForSingleObject(osWrite.hEvent, INFINITE) == WAIT_OBJECT_0) {
+		else 
+		{
+			if (WaitForSingleObject(osWrite.hEvent, INFINITE) == WAIT_OBJECT_0) 
+			{
 				if (!GetOverlappedResult(hComm, &osWrite, &dwWritten, TRUE))
 					result = false;
-			}else result = false;
-
-
+			}
+			else
+			{
+				result = false;
+			}
 		}
 	}
 

@@ -14,5 +14,6 @@ static constexpr int MAX_RETRIES = 200;
 static constexpr unsigned long  RAN_TIMER_MIN = 0; // in ms
 static constexpr unsigned long  RAN_TIMER_MAX = 200; // in ms
 static constexpr unsigned long  IDLE_STATE_TIME = 500; //ms
-static constexpr unsigned long  RECEPTION_TIMEOUT = (PACKET_SIZE / BAUD_RATE) * 3000;
+static constexpr unsigned long  RECEPTION_TIMEOUT = 2500;
+//(PACKET_SIZE / BAUD_RATE) * 1000;
 static constexpr unsigned long  DISCONNECT_TIMEOUT = 5000;
