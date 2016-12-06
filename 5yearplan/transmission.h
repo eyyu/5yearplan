@@ -1,19 +1,18 @@
 /*------------------------------------------------------------------------------
 -- SOURCE FILE: .cpp - The COMMAND or IDLE state of the protocol
 --
--- PROGRAM: [5YearPlan] 
+-- PROGRAM: 5yearplan
 --
 -- FUNCTIONS:
--- *list all functions here!* 
 -- Transmitter                         (void); // CTOR
--- void        addDataToQueue          (const std}::string& );
--- void        addFileToQueue          (const LPTSTR}& );
--- void        addFileToQueue          (const std}::string& );
--- void        sendPacket              (const HANDLE& );
+-- void        addDataToQueue          (const std::string& data);
+-- void        addFileToQueue          (const LPTSTR& filePath);
+-- void        addFileToQueue          (const std::string& filePath);
+-- void        sendPacket              (const HANDLE& commHandle);
 -- bool        outGoingDataInBuffer    (void);
 -- void        closeTransmitter        (void);
 -- static void ackTimeout              (void);
--- Packet      buildPacket             (const striag) const;
+-- Packet      buildPacket             (const std::string& data) const;
 --
 -- DATE: Nov. 09, 2016
 --
