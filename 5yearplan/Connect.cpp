@@ -22,6 +22,7 @@
 #include <chrono>
 
 #include "Connect.h"
+#include "Command.h"
 
 /*--------------------------------------------------------------------------
 -- FUNCTION: startRandomEnqTimer
@@ -254,7 +255,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 								enqCount = 0;
 								if (TX.outGoingDataInBuffer()) {
 									isWriting = true;
-									TX.sendPacket(hComm);
+									TX.sendPacket(hComm, hwnd1);
 									isWriting = false;
 								}
 								else

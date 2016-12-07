@@ -63,7 +63,7 @@ namespace transmit {
         void addDataToQueue(const std::string& data);     // data received as const a string 
         void addFileToQueue(const LPTSTR& filePath);      // path to data is receives. Stream needed to read
         void addFileToQueue(const std::string& filePath); // path to data is receives. Stream needed to read
-        void sendPacket(const HANDLE& commHandle);        // Called by connect.  
+		void sendPacket(const HANDLE& commHandle, const HANDLE& windHandle);        // Called by connect.  
         bool outGoingDataInBuffer() const { return !outputQueue.empty(); }; // allows for check of availability 
                                                                             // of outgoing data 
         void closeTransmitter(); 

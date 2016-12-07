@@ -203,7 +203,7 @@ void Transmitter::addFileToQueue(const std::string& filePath) {
 -- comm port, listening for the ACK response, resending if it doesnt receive one
 -- and then removing that sent packet from the queue.
 --------------------------------------------------------------------------*/
-void Transmitter::sendPacket(const HANDLE& commHandle) {
+void Transmitter::sendPacket(const HANDLE& commHandle, const HANDLE& windHandle) {
     timeoutReached = false;
     OVERLAPPED over = { 0 };
     over.hEvent = CreateEvent(nullptr, false, false, nullptr);
