@@ -49,11 +49,13 @@
 #define ACK_SENT			130//Field to be populated with stats (# of ACKs received)
 #define RX_STAT_COMP		131
 #define RX_COMP				132
+#define RX_STAT_ERR			133
+#define RX_ERR				134//Field to be populated with stats (# of ERRORS found)
 //************************************
 
-#define HELP_COMDIALOG		133
-#define HELP_OK				134
-#define IDC_PROGRESS		135
+#define HELP_COMDIALOG		135
+#define HELP_OK				136
+
 
 
 

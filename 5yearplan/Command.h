@@ -40,12 +40,10 @@ using namespace std;
 /****************************
 DATA MEMEBER DECLARATIONS*
 ******************************/
-LPCSTR	lpszCommName = "COM5"; // *** TO TM: IF NOT NEEDED, PLEASE REMOVE. 
-
 LPTSTR filePath; 	//String that holds path of the browsed file
 string text;		//Holds user's input
 
-char szFile[100];  // *** TO TM: PLEASE REMOVE IF NOT NEEDED!
+char szFile[100];	//Buffer for file path - used by ofn structure
 char comPort[10];	//Currently selected COMM PORT
 
 COMMCONFIG cc; 		// configuration struct for com port.
@@ -66,4 +64,3 @@ void availableCOM(HWND);
 void buttonEnable();
 void buttonDisable();
 void generateString();
-void progressBar();

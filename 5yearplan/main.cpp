@@ -1,6 +1,22 @@
-// Program WinMenu.cpp
-// COMP 3980, Final Project
-// Tim Makimov, A009031109
+/*------------------------------------------------------------------------------
+-- SOURCE FILE: main.cpp - The COMMAND state of the protocol
+--
+-- PROGRAM: 5YearPlan
+--
+-- FUNCTIONS:
+--
+-- DATE: DEC. 04, 2016
+--
+-- REVISIONS:
+-- Version 3.2.
+--
+-- DESIGNER: Tim Makimov
+--
+-- PROGRAMMER: Tim Makimov
+--
+-- NOTES:
+-- This is the main of the application - provides command and control.
+------------------------------------------------------------------------------*/
 
 #define STRICT
 #include "Command.h"
@@ -88,7 +104,6 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			if (msgboxID == IDOK)
 			{
 				buttonDisable();
-				//progressBar();
 				stopConnnection();
 			}
 			break;
@@ -103,14 +118,14 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		}
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_SEND))
 		{
-			progressBar();
 			generateString();
 			break;
 		}
 		switch (LOWORD(wParam))
 		{
 		case IDCANCEL:
-			DestroyWindow(hwnd);
+			stopConnnection();
+			PostQuitMessage(0);
 			break;
 		case MENU_PROP: // popup a dialog for changing the properties of selected com port.
 				configCommPort(hComm, comPort, hwnd);
@@ -375,10 +390,4 @@ void generateString()
 	GetWindowText(GetDlgItem(hwnd1, EDIT_TX), &text[0], bufferLength);
 	text.resize(bufferLength - 1);
 	SetWindowText(GetDlgItem(hwnd1, EDIT_RX), text.c_str()); 
-}
-
-void progressBar()
-{
-	SetWindowLong(GetDlgItem(hwnd1, IDC_PROGRESS), GWL_STYLE, GetWindowLong(GetDlgItem(hwnd1, IDC_PROGRESS), GWL_STYLE) | PBS_MARQUEE);
-	SendDlgItemMessage(hwnd1, IDC_PROGRESS, PBM_SETMARQUEE, (WPARAM)TRUE, 0);
 }
