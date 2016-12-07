@@ -36,9 +36,9 @@
 #define PACK_SENT			120 //Field to be populated with stats (# of packets sent)
 #define TX_STAT_SENT		121
 #define TX_STAT_ACK			122
-#define ACK_RECD			123//Field to be populated with stats (# of ACKs sent)
+#define ACK_RECD			123 //Field to be populated with stats (# of ACKs sent)
 #define TX_STAT_COMP		124
-#define TX_COMP				125
+#define TX_COMP				125 //Field to be populated with stats (# of COMPLETED file sent)
 //************************************
 
 //*******RX_STAT_GROUPBOX*************
@@ -48,7 +48,7 @@
 #define RX_STAT_ACK			129
 #define ACK_SENT			130//Field to be populated with stats (# of ACKs received)
 #define RX_STAT_COMP		131
-#define RX_COMP				132
+#define RX_COMP				132 //Field to be populated with stats (# of COMPLETED file)
 #define RX_STAT_ERR			133
 #define RX_ERR				134//Field to be populated with stats (# of ERRORS found)
 //************************************

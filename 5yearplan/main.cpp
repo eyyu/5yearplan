@@ -119,6 +119,7 @@ BOOL CALLBACK WndProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		if ((HWND)lParam == GetDlgItem(hwnd, BTN_SEND))
 		{
 			generateString();
+			sendNewData(text.c_str());
 			break;
 		}
 		switch (LOWORD(wParam))
@@ -389,5 +390,5 @@ void generateString()
 	text.resize(bufferLength);
 	GetWindowText(GetDlgItem(hwnd1, EDIT_TX), &text[0], bufferLength);
 	text.resize(bufferLength - 1);
-	SetWindowText(GetDlgItem(hwnd1, EDIT_RX), text.c_str()); 
+	//SetWindowText(GetDlgItem(hwnd1, EDIT_RX), text.c_str()); 
 }

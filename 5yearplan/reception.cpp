@@ -55,7 +55,7 @@ BOOL Reception::isPacketTimedOut = false;
 BOOL Reception::start(HWND handleDisplay, HANDLE handleCom) {
 	Packet packet;
 	std::vector<char> buffer;
-	//sendACK(handleCom);
+
 	while (waitForPacket(handleCom)) {
 		packetTimer.stop();
 		OutputDebugString("RECEIVED SYN \n");
@@ -380,6 +380,7 @@ void Reception::errorStat(HWND handleDisplay) {
 void  Process::startProcess(HWND handleDisplayParam, std::string &data) {
 	handleDisplay = handleDisplayParam;
 	dataQueue.push(data);
+	SetWindowText(GetDlgItem(handleDisplay, RX_COMP), std::to_string(completedFileCounter).c_str());
 	if (!isProcessing)
 		processThread = CreateThread(NULL, 0, readCharacters, this, 0, &threadId);
 }
@@ -464,6 +465,7 @@ void Process::cls() {
 void Reception::closeReceiption() {
 	packetCounter = 0;
 	errorCounter = 0;
+	ackCounter = 0;
 	process.resetProcess();
 }
 

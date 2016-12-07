@@ -22,6 +22,7 @@
 #include <chrono>
 
 #include "Connect.h"
+#include "winmenu2.h"
 
 /*--------------------------------------------------------------------------
 -- FUNCTION: startRandomEnqTimer
@@ -127,6 +128,14 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 	if (CommConfigDialog(commPortAddress, hwnd, &cc)) {
 		SetCommState(hComm, &cc.dcb);
 		isConnected = true;
+		SetWindowText(GetDlgItem(hwnd, PACK_SENT), std::to_string(0).c_str());
+		SetWindowText(GetDlgItem(hwnd, ACK_RECD), std::to_string(0).c_str());
+		SetWindowText(GetDlgItem(hwnd, TX_COMP), std::to_string(0).c_str());
+		SetWindowText(GetDlgItem(hwnd, PACK_RECD), std::to_string(0).c_str());
+		SetWindowText(GetDlgItem(hwnd, ACK_SENT), std::to_string(0).c_str());
+		SetWindowText(GetDlgItem(hwnd, RX_COMP), std::to_string(0).c_str());
+		SetWindowText(GetDlgItem(hwnd, RX_ERR), std::to_string(0).c_str());
+
 		connectedThread = std::thread(startConnectProc, hwnd, hwnd); // NULL to be replaces with stats Display!!
 		connectedThread.detach(); // run connected threas in background
 		return true;
