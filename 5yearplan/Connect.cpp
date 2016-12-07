@@ -46,7 +46,24 @@ void startRandomEnqTimer()
 {
 	randomEnqTimer.start();
 }
-
+/*--------------------------------------------------------------------------
+-- FUNCTION:  startIdleStateTimer
+--
+-- DATE: DEC.06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/DEC/06 - DESCRIPTION
+--
+-- DESIGNER: Eva Yu
+--
+-- PROGRAMMER: Eva Yu
+--
+-- INTERFACE: void startIdleStateTimer (void)
+--
+--
+-- NOTES:
+-- starts A timer that runs on a random time between 0 - 100 ms
+--------------------------------------------------------------------------*/
 void startIdleStateTimer()
 {
 	idleStateTimer.start();

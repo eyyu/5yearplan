@@ -24,7 +24,7 @@
 
 using namespace receive;
 
-BOOL Reception::isPacketTimedOut = false;
+BOOL Reception::isReceptionTimedOut = false;
 
 /*--------------------------------------------------------------------------
 -- FUNCTION: start
@@ -57,7 +57,7 @@ BOOL Reception::start(HWND handleDisplay, HANDLE handleCom) {
 	std::vector<char> buffer;
 
 	while (waitForPacket(handleCom)) {
-		packetTimer.stop();
+		receptionTimer.stop();
 		OutputDebugString("RECEIVED SYN \n");
 		if (retrievePacket(handleCom, buffer)) {
 			if (parsePacket(packet, buffer)) {
@@ -175,9 +175,9 @@ BOOL Reception::waitForPacket(HANDLE handleCom) {
 	{
 		return FALSE;
 	}
-	isPacketTimedOut = false;
-	packetTimer.start();
-	while (!isPacketTimedOut) {
+	isReceptionTimedOut = false;
+	receptionTimer.start();
+	while (!isReceptionTimedOut) {
 		if (ReadFile(handleCom, &chRead, 1, &dwRead, &osReader)) {
 			//char aaa[100];
 			//sprintf_s(aaa, "Reception::waitForPacket - dwRead = %d , %02X \n", dwRead, chRead);
@@ -241,9 +241,6 @@ BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<char> &buffer) {
 	GetCommTimeouts(handleCom, &CommTimeouts);
 
 	// Change the COMMTIMEOUTS structure settings.
-	//CommTimeouts.ReadIntervalTimeout = (RECEPTION_TIMEOUT / (PACKET_SIZE - 1))+1;
-	//CommTimeouts.ReadTotalTimeoutMultiplier = 0;
-	//CommTimeouts.ReadTotalTimeoutConstant = RECEPTION_TIMEOUT;
 
 	CommTimeouts.ReadIntervalTimeout = BYTE_TIMEOUT;//BYTE_TIMEOUT;
 	CommTimeouts.ReadTotalTimeoutMultiplier = 0;
@@ -385,6 +382,27 @@ void  Process::startProcess(HWND handleDisplayParam, std::string &data) {
 		processThread = CreateThread(NULL, 0, readCharacters, this, 0, &threadId);
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: readCharacters
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+-- Version 2.0 - [TK] - 2016/DEC/06 - added regex for string to display new line.
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: DWORD WINAPI readCharacters(LPVOID param)
+--
+-- RETURNS: ture if proper length of packet is received without timeout.
+--
+-- NOTES:
+-- This is a thread for proccessing received data.
+-- This retreive the data from the queue and process it character by character.
+--------------------------------------------------------------------------*/
 DWORD WINAPI Process::readCharacters(LPVOID param) {
 	Process* thisObj = (Process*)(param);
 
@@ -397,13 +415,37 @@ DWORD WINAPI Process::readCharacters(LPVOID param) {
 			if (!thisObj->handleChar(data[i]))
 				break;
 		}
-		thisObj->displayChar();
+		thisObj->displayBuffer();
 		thisObj->dataQueue.pop();
 	}
 	thisObj->isProcessing = false;
 	CloseHandle(thisObj->processThread);
 	return 0;
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: handleChar
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+-- Version 2.0 - [TK] - 2016/DEC/06 - added handling of DC1 charcter
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: BOOL handleChar(char c)
+--
+-- RETURNS: ture if the character is not NULL or DC1. 
+--
+-- NOTES:
+-- This function reads the data character by character and handle it for protocol.
+-- If the charcter is NULL, we assume this data is the last data of the file, then save the buffer into a file.
+-- If the character is DC1, we assume the following data is the first data of the file, then clear buffer.
+-- Otherwise, save the character into the buffer.
+--------------------------------------------------------------------------*/
 BOOL Process::handleChar(char c) {
 	if (c == NULL_BYTE) {
 		if (saveBufferToFile())
@@ -422,9 +464,49 @@ BOOL Process::handleChar(char c) {
 	}
 	return false;
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: writeCharToBuffer
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void writeCharToBuffer(char c)
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function save the character into the buffer.
+--------------------------------------------------------------------------*/
 void Process::writeCharToBuffer(char c) {
 	writeBuffer += c;
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: saveBufferToFile
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: BOOL saveBufferToFile()
+--
+-- RETURNS: true if file succefully saved.
+--
+-- NOTES:
+-- This function save the data from buffer into a file and then clear the buffer.
+--------------------------------------------------------------------------*/
 BOOL Process::saveBufferToFile() {
 	HANDLE hFile;
 	DWORD wmWritten;
@@ -441,27 +523,128 @@ BOOL Process::saveBufferToFile() {
 	OutputDebugString(fileName.c_str());
 	hFile = CreateFile(fileName.c_str(), GENERIC_WRITE,
 		FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	WriteFile(hFile, writeBuffer.c_str(), writeBuffer.size(), &wmWritten, NULL);
+	if (!WriteFile(hFile, writeBuffer.c_str(), writeBuffer.size(), &wmWritten, NULL))
+		return false;
 	CloseHandle(hFile);
 	writeBuffer.clear();
 	return true;
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: successSaveFile
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void successSaveFile()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function is called when the file is succefully saved
+-- and pop up a message box for user to be notified the file is saved.
+--------------------------------------------------------------------------*/
 void Process::successSaveFile() {
 	MessageBox(NULL, "Succefully file saved!!", "", MB_OK);
 	cls();
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: failToSaveFile
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void failToSaveFile()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function is called when saving file is failed
+-- and pop up a message box for user to be notified the saving file is failed.
+--------------------------------------------------------------------------*/
 void Process::failToSaveFile() {
 	MessageBox(NULL, "Saving file failed!!", "", MB_OK);
 	cls();
 }
-
-void Process::displayChar() {
+/*--------------------------------------------------------------------------
+-- FUNCTION: displayBuffer
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void displayBuffer()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function displays the data from buffer on the screen.
+--------------------------------------------------------------------------*/
+void Process::displayBuffer() {
 	SetWindowText(GetDlgItem(handleDisplay, EDIT_RX), writeBuffer.c_str());
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: cls
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void cls()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function clear the screen.
+--------------------------------------------------------------------------*/
 void Process::cls() {
-	SetWindowText(GetDlgItem(handleDisplay, EDIT_RX), writeBuffer.c_str());
+	SetWindowText(GetDlgItem(handleDisplay, EDIT_RX), "");
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: closeReceiption
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void closeReceiption()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function is called when closing reception.
+-- This resets the counter values and also stop the processing if running.
+--------------------------------------------------------------------------*/
 void Reception::closeReceiption() {
 	packetCounter = 0;
 	errorCounter = 0;
@@ -469,6 +652,26 @@ void Reception::closeReceiption() {
 	process.resetProcess();
 }
 
+/*--------------------------------------------------------------------------
+-- FUNCTION: resetProcess
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void resetProcess()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function is called when closing reception.
+-- This resets the counter values and also stop the processing if running.
+--------------------------------------------------------------------------*/
 void Process::resetProcess() {
 	if (isProcessing && processThread != NULL)
 		CloseHandle(processThread);
@@ -484,6 +687,26 @@ void Process::resetProcess() {
 	cls();
 }
 
-void Reception::packetTimeout() {
-	isPacketTimedOut = true;
+/*--------------------------------------------------------------------------
+-- FUNCTION: packetTimeout
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/DEC/06 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void packetTimeout()
+--
+-- RETURNS: void
+--
+-- NOTES:
+-- This function is static function that is fired when the reception timer is timed out.
+-- Set isPacketTimedOut flage to be true so that the waitForPacket is stopped.
+--------------------------------------------------------------------------*/
+void Reception::receptionTimeout() {
+	isReceptionTimedOut = true;
 }

@@ -8,7 +8,7 @@
 -- static DWORD WINAPI readCharacters(LPVOID params);
 -- BOOL handleChar          (char);
 -- void writeCharToBuffer   (char);
--- void displayChar         (char);
+-- void displayBuffer       (char);
 -- BOOL saveBufferToFile    (void);
 -- void successSaveFile     (void);
 -- void failToSaveFile      (void);
@@ -23,7 +23,7 @@
 -- BOOL parsePacket         (Packet &, std::vector<BYTE> &);
 -- BOOL validatePacket      (Packet &);
 -- void errorStat           (HWND );
--- void packetTimeout       (void);
+-- void receptionTimeout	(void);
 -- BOOL start               (HWND , HWND , HANDLE);
 -- void closeReceiption     (void);
 --
@@ -32,6 +32,7 @@
 -- REVISIONS:
 -- Version 1.0.1.0 - [TK] - 2016/NOV/09 - created class
 -- Version 2.0.1.0 - [TK] - 2016/NOV/28th - added overalpping class
+-- Version 2.0.2.0 - [TK] - 2016/DEC/06 - added stat counters
 --
 -- DESIGNER: Eva Yu & Terry Kang
 --
@@ -85,7 +86,7 @@ namespace receive {
 		static DWORD WINAPI readCharacters(LPVOID params);
 		BOOL handleChar(char c);
 		void writeCharToBuffer(char c);
-		void displayChar();
+		void displayBuffer();
 		BOOL saveBufferToFile();
 		void successSaveFile();
 		void failToSaveFile();
@@ -105,7 +106,7 @@ namespace receive {
 		DWORD ackCounter;
 		Process process;
 
-		static BOOL isPacketTimedOut;
+		static BOOL isReceptionTimedOut;
 
 		/**MEMBER FUNCTIONS**/
 		void sendACK(HWND handleDisplay, HANDLE handleCom);
@@ -114,9 +115,9 @@ namespace receive {
 		BOOL parsePacket(Packet &packet, std::vector<char> &buffer);
 		BOOL validatePacket(Packet &packet);
 		void errorStat(HWND handleStat);
-		static void packetTimeout();
-		typedef Timer<&packetTimeout, TRANSMISSION_TIMEOUT * 2 + BYTE_TIMEOUT> PacketTimer;
-		PacketTimer packetTimer;
+		static void receptionTimeout();
+		typedef Timer<&receptionTimeout, TRANSMISSION_TIMEOUT * 2 + BYTE_TIMEOUT> ReceptionTimer;
+		ReceptionTimer receptionTimer;
 	public:
 		BOOL start(HWND handleDisplay, HANDLE handleCom);
 		void closeReceiption();

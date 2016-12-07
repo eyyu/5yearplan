@@ -1,3 +1,20 @@
+/*------------------------------------------------------------------------------
+-- SOURCE FILE: N/A
+--
+-- PROGRAM: 5yearplan
+--
+-- DATE: DEC. 06, 2016
+--
+-- REVISIONS:
+
+-- DESIGNER: Eva Yu, Terry Kang, John Agapeyev, Tim Makimov
+--
+-- PROGRAMMER: Terry Kang
+--
+-- NOTES:
+-- Constants that are used by various classes
+------------------------------------------------------------------------------*/
+
 #pragma once
 
 static constexpr unsigned char NULL_BYTE = 0x00;
