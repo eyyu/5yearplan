@@ -255,7 +255,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 								enqCount = 0;
 								if (TX.outGoingDataInBuffer()) {
 									isWriting = true;
-									TX.sendPacket(hComm, hwnd1);
+									TX.sendPacket(hComm);
 									isWriting = false;
 								}
 								else

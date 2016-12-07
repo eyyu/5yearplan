@@ -47,7 +47,10 @@ namespace transmit {
         static std::atomic_bool timeoutReached;
         static void ackTimeout();       //timeout to receive an ACK for packet sent
 
-        std::queue<Packet> outputQueue;  
+        std::queue<Packet> outputQueue;
+        int packetsSent = 0;
+        int acksReceived = 0;
+        int sendingCompletion = 0;
         int retryCounter = 0;           // dependent on MAX_RETRIES constant
 
         typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 2000> AckTimer;
@@ -63,7 +66,7 @@ namespace transmit {
         void addDataToQueue(const std::string& data);     // data received as const a string 
         void addFileToQueue(const LPTSTR& filePath);      // path to data is receives. Stream needed to read
         void addFileToQueue(const std::string& filePath); // path to data is receives. Stream needed to read
-		void sendPacket(const HANDLE& commHandle, const HANDLE& windHandle);        // Called by connect.  
+        void sendPacket(const HANDLE& commHandle);        // Called by connect.  
         bool outGoingDataInBuffer() const { return !outputQueue.empty(); }; // allows for check of availability 
                                                                             // of outgoing data 
         void closeTransmitter(); 

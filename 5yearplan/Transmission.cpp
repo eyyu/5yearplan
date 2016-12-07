@@ -32,6 +32,7 @@
 #include <iterator>
 #include <windows.h>
 
+#include "Command.h"
 #include "timer.h"
 #include "transmission.h"
 #include "constants.h"
@@ -203,7 +204,7 @@ void Transmitter::addFileToQueue(const std::string& filePath) {
 -- comm port, listening for the ACK response, resending if it doesnt receive one
 -- and then removing that sent packet from the queue.
 --------------------------------------------------------------------------*/
-void Transmitter::sendPacket(const HANDLE& commHandle, const HANDLE& windHandle) {
+void Transmitter::sendPacket(const HANDLE& commHandle) {
     timeoutReached = false;
     OVERLAPPED over = { 0 };
     over.hEvent = CreateEvent(nullptr, false, false, nullptr);
@@ -213,7 +214,6 @@ void Transmitter::sendPacket(const HANDLE& commHandle, const HANDLE& windHandle)
         //Error, tried to send packet that doesn't exist
         throw std::runtime_error("Tried to send a packet from an empty queue");
     }
-    outputQueue.front().data;
     std::string data = outputQueue.front().getOutputString();
     //Overlapped struct goes in last parameter to writefile call
 
@@ -242,6 +242,13 @@ void Transmitter::sendPacket(const HANDLE& commHandle, const HANDLE& windHandle)
     for (int i = 0; i < PACKET_SIZE; i++) {
         WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
     }
+
+    SetWindowText(GetDlgItem(hwnd1, PACK_SENT), std::to_string(++packetsSent).c_str());
+
+    if (data.find_first_of(static_cast<char>(NULL_BYTE)) != std::string::npos) {
+        SetWindowText(GetDlgItem(hwnd1, TX_COMP), std::to_string(++sendingCompletion).c_str());
+    }
+
     //ackTimer.start();
 
     std::string buf;
@@ -304,6 +311,7 @@ void Transmitter::sendPacket(const HANDLE& commHandle, const HANDLE& windHandle)
             }
         }
         else {
+            SetWindowText(GetDlgItem(hwnd1, ACK_RECD), std::to_string(++acksReceived).c_str());
             break;
         }
     }
@@ -359,6 +367,9 @@ void Transmitter::sendPacket(const HANDLE& commHandle, const HANDLE& windHandle)
 --------------------------------------------------------------------------*/
 void Transmitter::closeTransmitter() {
     retryCounter = 0;
+    acksReceived = 0;
+    packetsSent = 0;
+    sendingCompletion = 0;
     std::queue<Packet>().swap(outputQueue);
 }
 
