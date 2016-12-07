@@ -1,5 +1,5 @@
 /*------------------------------------------------------------------------------
--- SOURCE FILE: .cpp - The COMMAND or IDLE state of the protocol
+-- SOURCE FILE: transmission.h - The TX side of the protocol
 --
 -- PROGRAM: 5yearplan
 --
