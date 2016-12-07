@@ -4,32 +4,36 @@
 -- PROGRAM: 5yearplan
 --
 -- FUNCTIONS:
--- 
+--
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [TK] - 2016/NOV/19 - Creted Function
--- 
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - Creted Functions
+-- Version 2.0 - [TK] - 2016/DEC/06 - Modified Funtions
+--
 -- DESIGNER: Terry Kang
 --
 -- PROGRAMMER: Terry Kang
 --
 -- NOTES:
--- this is the defition for receptions class and Process Class 
+-- this is the defition for receptions class and Process Class
 ------------------------------------------------------------------------------*/
 #include "reception.h"
 #include "winmenu2.h"
 
 using namespace receive;
 
+BOOL Reception::isPacketTimedOut = false;
+
 /*--------------------------------------------------------------------------
 -- FUNCTION: start
 --
 -- DATE: nov. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [TK] - 2016/nov/19 - created function 
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/Nov/19 - created function
+-- Version 2.0 - [TK] - 2016/Dec/06 - added stats updates
 --
 -- DESIGNER: Terry Kang
 --
@@ -38,23 +42,30 @@ using namespace receive;
 -- INTERFACE: BOOl start (HWND, HWND, HANDLE)
 -- HWND
 -- HWND
--- HANDLE 
+-- HANDLE
 --
--- RETURNS: 
+-- RETURNS: ture if packet succefully received and validated
 --
 -- NOTES:
--- the start process for recieveing a packet 
+-- The start process for recieveing a packet.
+-- This process wait for packet that starts with SYN as first byte,
+-- then retrieve the packets and validates. If success, start processing
+-- the received packet on another thread.
 --------------------------------------------------------------------------*/
-BOOL Reception::start(HWND handleDisplay, HWND handleStat, HANDLE handleCom) {
+BOOL Reception::start(HWND handleDisplay, HANDLE handleCom) {
 	Packet packet;
 	std::vector<char> buffer;
 	//sendACK(handleCom);
 	while (waitForPacket(handleCom)) {
+		packetTimer.stop();
+		OutputDebugString("RECEIVED SYN \n");
 		if (retrievePacket(handleCom, buffer)) {
 			if (parsePacket(packet, buffer)) {
 				if (validatePacket(packet)) {
+					packetCounter++;
+					SetWindowText(GetDlgItem(handleDisplay, PACK_RECD), std::to_string(packetCounter).c_str());
 					process.startProcess(handleDisplay, packet.data);
-					sendACK(handleCom);
+					sendACK(handleDisplay, handleCom);
 					return true;
 				}
 				else
@@ -70,23 +81,25 @@ BOOL Reception::start(HWND handleDisplay, HWND handleStat, HANDLE handleCom) {
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [TK] - 2016/NOV/19 - created function 
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+-- Version 2.0 - [TK] - 2016/NOV/28 - added overlaped feature
+-- Version 3.0 - [TK] - 2016/DEC/06 - added displaying ack counter stat.
 --
--- DESIGNER: Terry Kang	
+-- DESIGNER: Terry Kang
 --
--- PROGRAMMER: Terry Kang	
+-- PROGRAMMER: Terry Kang
 --
 -- INTERFACE: void sendACK (HANDLE)
 -- HANDLE 	handltetoComm
 --
--- RETURNS: 
--- RETURN
+-- RETURNS: void
 --
 -- NOTES:
--- NOTES
+-- This funtion is called when a packet is succefully received and then
+-- send ackknoledment to notify the packet successfully send and received.
 --------------------------------------------------------------------------*/
-void Reception::sendACK(HANDLE handleCom) {
+void Reception::sendACK(HWND handleDisplay, HANDLE handleCom) {
 	char ch = ACK;
 	DWORD dwWritten;
 	DWORD ackFailCounter = 0;
@@ -102,20 +115,44 @@ void Reception::sendACK(HANDLE handleCom) {
 		return;
 	}
 
-	if (!WriteFile(handleCom,&ch,1,&dwWritten,&osWrite))
+	if (!WriteFile(handleCom, &ch, 1, &dwWritten, &osWrite))
 	{
 		if (GetLastError() == ERROR_IO_PENDING) {
 			if (WaitForSingleObject(osWrite.hEvent, INFINITE) == WAIT_OBJECT_0)
 			{
-				GetOverlappedResult(handleCom, &osWrite, &dwWritten, TRUE);
+				if (GetOverlappedResult(handleCom, &osWrite, &dwWritten, TRUE)) {
+					ackCounter++;
+					SetWindowText(GetDlgItem(handleDisplay, ACK_SENT), std::to_string(ackCounter).c_str());
+				}
 			}
 		}
 	}
 
 	CloseHandle(osWrite.hEvent);
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: sendACK
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+-- Version 2.0 - [TK] - 2016/DEC/06 - added overlaped and timeout features
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void sendACK (HANDLE)
+-- HANDLE 	handltetoComm
+--
+-- RETURNS: ture if SYN charcter is received
+--
+-- NOTES:
+-- This funtion wait for SYN character which indicates a data packet is following.
+--------------------------------------------------------------------------*/
 BOOL Reception::waitForPacket(HANDLE handleCom) {
-#if 1
 	DWORD dwRead;
 	char  chRead;
 	OVERLAPPED osReader = { 0 };
@@ -129,8 +166,8 @@ BOOL Reception::waitForPacket(HANDLE handleCom) {
 
 	// Change the COMMTIMEOUTS structure settings.
 	CommTimeouts.ReadIntervalTimeout = MAXDWORD;
-	CommTimeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
-	CommTimeouts.ReadTotalTimeoutConstant = RECEPTION_TIMEOUT;
+	CommTimeouts.ReadTotalTimeoutMultiplier = 0;
+	CommTimeouts.ReadTotalTimeoutConstant = 0;
 
 	// Set the timeout parameters for all read and write operations
 	// on the port. 
@@ -138,66 +175,58 @@ BOOL Reception::waitForPacket(HANDLE handleCom) {
 	{
 		return FALSE;
 	}
-
-	if (ReadFile(handleCom, &chRead, 1, &dwRead, &osReader)) {
-		if (chRead == SYN)
-			result = true;
-		else if (chRead == ENQ)
-			result = false;
-	}
-	else {
-		if (GetLastError() == ERROR_IO_PENDING) {
-			if (WaitForSingleObject(osReader.hEvent, RECEPTION_TIMEOUT) == WAIT_OBJECT_0) {
-				if (GetOverlappedResult(handleCom, &osReader, &dwRead, FALSE))
+	isPacketTimedOut = false;
+	packetTimer.start();
+	while (!isPacketTimedOut) {
+		if (ReadFile(handleCom, &chRead, 1, &dwRead, &osReader)) {
+			//char aaa[100];
+			//sprintf_s(aaa, "Reception::waitForPacket - dwRead = %d , %02X \n", dwRead, chRead);
+			//OutputDebugString(aaa);
+			if (chRead == SYN)
+				return true;
+		}
+		else {
+			if (GetLastError() == ERROR_IO_PENDING) {
+				if (GetOverlappedResult(handleCom, &osReader, &dwRead, TRUE)) {
+					//char aaa[100];
+					//sprintf_s(aaa, "Reception::waitForPacket - dwRead = %d , %02X \n", dwRead, chRead);
+					//OutputDebugString(aaa);
 					if (chRead == SYN)
-						result = true;
-					else if (chRead == ENQ)
-						result = false;
+						return true;
+				}
 			}
 		}
 	}
 
 	CloseHandle(osReader.hEvent);
 
-	return result;
-#endif
-
-
-#if 0
-	OVERLAPPED Timeout_Event;
-	memset((char *)&Timeout_Event, 0, sizeof(OVERLAPPED));
-	Timeout_Event.hEvent = CreateEvent(NULL, TRUE, TRUE, 0);
-	DWORD dwCommEvent;
-	BOOL result = true;
-
-	//   if (!SetCommMask(handleCom, EV_RXCHAR)) // Set event listener for RX_CHAR, occurs when a message comes from the port.
-	//       MessageBox(NULL, "SetCommMask", "Error", MB_OK | MB_ICONINFORMATION);
-	// while (1) {
-	// 	if (WaitCommEvent(handleCom, &dwCommEvent, &Timeout_Event))
-	// 	{ // wait for RXCHAR event.
-	// 		return true;
-	// 	}
-	// 	else
-	// 	{
-	// 		if (GetLastError() == ERROR_IO_PENDING)
-	// 		{
-	// 			if (WaitForSingleObject(Timeout_Event.hEvent, (DWORD)RECEPTION_TIMEOUT) == WAIT_OBJECT_0)
-	// 			{
-	// 				return true;
-	// 			}
-	// 			else {
-	// 				return false;
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-
-	CloseHandle(Timeout_Event.hEvent);
-	return result;
-#endif
+	return false;
 };
 
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: retrievePacket
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+-- Version 2.0 - [TK] - 2016/DEC/06 - added overlaped and timeout features
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: BOOL retrievePacket (HANDLE, std::vector<char>)
+-- HANDLE 	handltetoComm
+--
+-- RETURNS: ture if proper length of packet is received without timeout.
+--
+-- NOTES:
+-- This funtion is called when SYN character is received and then
+-- try to read a packet after SYN character.
+-- if success, populates the passed buffer with the packet.
+--------------------------------------------------------------------------*/
 BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<char> &buffer) {
 	DWORD dwRead;
 	char  tempBuffer[1026];
@@ -216,9 +245,9 @@ BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<char> &buffer) {
 	//CommTimeouts.ReadTotalTimeoutMultiplier = 0;
 	//CommTimeouts.ReadTotalTimeoutConstant = RECEPTION_TIMEOUT;
 
-	CommTimeouts.ReadIntervalTimeout = RECEPTION_TIMEOUT;
+	CommTimeouts.ReadIntervalTimeout = BYTE_TIMEOUT;//BYTE_TIMEOUT;
 	CommTimeouts.ReadTotalTimeoutMultiplier = 0;
-	CommTimeouts.ReadTotalTimeoutConstant = RECEPTION_TIMEOUT;
+	CommTimeouts.ReadTotalTimeoutConstant = TRANSMISSION_TIMEOUT * 2;
 	// Set the timeout parameters for all read and write operations
 	// on the port. 
 	if (!SetCommTimeouts(handleCom, &CommTimeouts))
@@ -226,33 +255,44 @@ BOOL Reception::retrievePacket(HANDLE handleCom, std::vector<char> &buffer) {
 		return FALSE;
 	}
 
-	if (ReadFile(handleCom, tempBuffer, (PACKET_SIZE - 1) , &dwRead, &osReader))
+	if (ReadFile(handleCom, tempBuffer, (PACKET_SIZE - 1), &dwRead, &osReader))
 		buffer.assign(tempBuffer, tempBuffer + (PACKET_SIZE - 1));
 	else {
 		if (GetLastError() == ERROR_IO_PENDING) {
-			if (WaitForSingleObject(osReader.hEvent, INFINITE) == WAIT_OBJECT_0) {
-				if (GetOverlappedResult(handleCom, &osReader, &dwRead, FALSE))
-					buffer.assign(tempBuffer, tempBuffer + (PACKET_SIZE - 1));
-			}
+			if (GetOverlappedResult(handleCom, &osReader, &dwRead, TRUE))
+				buffer.assign(tempBuffer, tempBuffer + (PACKET_SIZE - 1));
 		}
 	}
 
-	/*
-	auto syn_pos = std::find(buffer.begin(), buffer.end(), SYN);
-	if (syn_pos == buffer.end())
-	return false;
-	buffer.erase(buffer.begin(), syn_pos);
-	*/
 	CloseHandle(osReader.hEvent);
 
-	if (buffer.size() != (PACKET_SIZE - 1))
+	if (dwRead != (PACKET_SIZE - 1))
 		return false;
-
-	packetCounter++;
 
 	return true;
 }
 
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: parsePacket
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: BOOL parsePacket (Packet&, std::vector<char>)
+--
+-- RETURNS: ture if parsing is success.
+--
+-- NOTES:
+--  This function parese the received packet in the passed buffer into
+--  the predefined packet fomat (SYN,data,crc).
+--------------------------------------------------------------------------*/
 BOOL Reception::parsePacket(Packet &packet, std::vector<char> &buffer) {
 	packet.data = std::string(buffer.begin(), buffer.begin() + DATA_SIZE);
 
@@ -264,16 +304,79 @@ BOOL Reception::parsePacket(Packet &packet, std::vector<char> &buffer) {
 
 	return true;
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: validatePacket
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: BOOL validatePacket (Packet&)
+--
+-- RETURNS: ture if CRC is valid.
+--
+-- NOTES:
+--  This fuction called validateCRC funtion to check the received packet
+--  is valid.
+--------------------------------------------------------------------------*/
 BOOL Reception::validatePacket(Packet &packet) {
 	return validateCRC(packet);
 }
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: errorStat
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: BOOL errorStat (HWND)
+--
+-- RETURNS: void
+--
+-- NOTES:
+--  This function is called when the received packet is invalid and
+--  updates error stat diplay on the windows
+--------------------------------------------------------------------------*/
 void Reception::errorStat(HWND handleDisplay) {
 	errorCounter++;
-}
-void Reception::packetTimeout() {
-	isPacketTimedOut = true;
-};
+	SetWindowText(GetDlgItem(handleDisplay, RX_ERR), std::to_string(errorCounter).c_str());
 
+}
+
+/*--------------------------------------------------------------------------
+-- FUNCTION: startProcess
+--
+-- DATE: NOV. 19, 2016
+--
+-- REVISIONS:
+-- Version 1.0 - [TK] - 2016/NOV/19 - created function
+--
+-- DESIGNER: Terry Kang
+--
+-- PROGRAMMER: Terry Kang
+--
+-- INTERFACE: void startProcess (HWND,  std::string&)
+--
+-- RETURNS: void
+--
+-- NOTES:
+--  The start process for processing the received packet on different thread.
+--  This function is called when a packet is successfully received.
+--  Insert the received data into processing queue and  if no processing is running,
+--  create another thread to process the data for displaying and saving it into a file.
+--------------------------------------------------------------------------*/
 void  Process::startProcess(HWND handleDisplayParam, std::string &data) {
 	handleDisplay = handleDisplayParam;
 	dataQueue.push(data);
@@ -287,6 +390,8 @@ DWORD WINAPI Process::readCharacters(LPVOID param) {
 	thisObj->isProcessing = true;
 	while (!thisObj->dataQueue.empty()) {
 		std::string &data = thisObj->dataQueue.front();
+		std::regex e("(?!\r)\n");
+		data = std::regex_replace(data, e, "\r\n");
 		for (int i = 0; i < DATA_SIZE; i++) {
 			if (!thisObj->handleChar(data[i]))
 				break;
@@ -299,11 +404,17 @@ DWORD WINAPI Process::readCharacters(LPVOID param) {
 	return 0;
 }
 BOOL Process::handleChar(char c) {
-	if (c == NULL_BYTE)
+	if (c == NULL_BYTE) {
 		if (saveBufferToFile())
 			successSaveFile();
 		else
 			failToSaveFile();
+		completedFileCounter++;
+		SetWindowText(GetDlgItem(handleDisplay, RX_COMP), std::to_string(completedFileCounter).c_str());
+	}
+	else if (c == DC1) {
+		writeBuffer.clear();
+	}
 	else {
 		writeCharToBuffer(c);
 		return true;
@@ -314,12 +425,32 @@ void Process::writeCharToBuffer(char c) {
 	writeBuffer += c;
 }
 BOOL Process::saveBufferToFile() {
+	HANDLE hFile;
+	DWORD wmWritten;
+
+	SYSTEMTIME stNow;
+	GetSystemTime(&stNow);
+
+	char currentTime[84] = "";
+
+	sprintf_s(currentTime, "%d%d%d_%d%d%d", stNow.wDay, stNow.wMonth, stNow.wYear,
+		stNow.wHour, stNow.wMinute, stNow.wSecond);
+
+	std::string fileName = "C:\\Users\\Administrator\\Desktop\\5yearplan_" + std::string(currentTime) + ".txt";
+	OutputDebugString(fileName.c_str());
+	hFile = CreateFile(fileName.c_str(), GENERIC_WRITE,
+		FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	WriteFile(hFile, writeBuffer.c_str(), writeBuffer.size(), &wmWritten, NULL);
+	CloseHandle(hFile);
+	writeBuffer.clear();
 	return true;
 }
 void Process::successSaveFile() {
+	MessageBox(NULL, "Succefully file saved!!", "", MB_OK);
 	cls();
 }
 void Process::failToSaveFile() {
+	MessageBox(NULL, "Saving file failed!!", "", MB_OK);
 	cls();
 }
 
@@ -327,23 +458,7 @@ void Process::displayChar() {
 	SetWindowText(GetDlgItem(handleDisplay, EDIT_RX), writeBuffer.c_str());
 }
 void Process::cls() {
-	//HDC hdc; // handle for device contect
-	//SIZE sz; // size of charcter
-	//hdc = GetDC(handleDisplay);             // get device context
-	//int x = 0, y = 0;
-	//char space = ' ';
-	//while (y < TEXTBOX_HEIGTH) {
-	//    while (x < TEXTBOX_WIDTH) {
-	//        TextOut(hdc, x, y, &space, 1); // display character on window
-	//        GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
-	//        x += sz.cx;
-	//    }
-	//    GetTextExtentPoint32(hdc, &space, 1, &sz); // get the size of current character.
-	//    y += sz.cy;
-	//    x = 0;
-	//}
-	//ReleaseDC(handleDisplay, hdc); // Release device context
-	//char_x = char_y = 0;
+	SetWindowText(GetDlgItem(handleDisplay, EDIT_RX), writeBuffer.c_str());
 }
 
 void Reception::closeReceiption() {
@@ -359,7 +474,14 @@ void Process::resetProcess() {
 	isProcessing = false;
 	dataQueue = {};
 	writeBuffer.clear();
-	cls();
+	completedFileCounter = 0;
 
+	SetWindowText(GetDlgItem(handleDisplay, PACK_RECD), 0);
+	SetWindowText(GetDlgItem(handleDisplay, ACK_SENT), 0);
+	SetWindowText(GetDlgItem(handleDisplay, RX_COMP), 0);
+	cls();
 }
 
+void Reception::packetTimeout() {
+	isPacketTimedOut = true;
+}

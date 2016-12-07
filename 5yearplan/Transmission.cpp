@@ -16,8 +16,8 @@
 --
 -- DATE: NOV. 12, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [JA] - 2016/NOV/12 - Created Functions 
+-- REVISIONS:
+-- Version 1.0 - [JA] - 2016/NOV/12 - Created Functions
 
 -- DESIGNER: John Agapeyev
 --
@@ -32,11 +32,11 @@
 #include <iterator>
 #include <windows.h>
 
-#include "Command.h"
 #include "timer.h"
 #include "transmission.h"
 #include "constants.h"
 #include "packet.h"
+#include "winmenu2.h"
 
 using namespace transmit;
 
@@ -61,9 +61,9 @@ std::atomic_bool Transmitter::timeoutReached = false;
 -- creates the packet based on that data, and adding that new packet to the queue.
 --------------------------------------------------------------------------*/
 void Transmitter::addDataToQueue(const std::string& data) {
-    for (const auto& content : packetizeData(data)) {
-        outputQueue.push(buildPacket(content));
-    }
+	for (const auto& content : packetizeData(data)) {
+		outputQueue.push(buildPacket(content));
+	}
 }
 
 /*--------------------------------------------------------------------------
@@ -85,7 +85,7 @@ void Transmitter::addDataToQueue(const std::string& data) {
 -- calling the packet constructor.
 --------------------------------------------------------------------------*/
 Packet Transmitter::buildPacket(const std::string & data) const {
-    return Packet(data);
+	return Packet(data);
 }
 
 /*--------------------------------------------------------------------------
@@ -108,29 +108,29 @@ Packet Transmitter::buildPacket(const std::string & data) const {
 -- the null packet based on the size of the data.
 --------------------------------------------------------------------------*/
 std::vector<std::string> Transmitter::packetizeData(const std::string& data) const {
-    const size_t packetNum = (data.length() / DATA_SIZE);
-    std::vector<std::string> dataChunks;
+	const size_t packetNum = (data.length() / DATA_SIZE);
+	std::vector<std::string> dataChunks;
 
-   // dataChunks.emplace_back(DATA_SIZE, DC1);
+	// dataChunks.emplace_back(DATA_SIZE, DC1);
 
-    std::string temp(data);
+	std::string temp(data);
 
-    while (1) {
-        if (temp.size() < DATA_SIZE) {
-            if (temp.length() % DATA_SIZE) {
-                dataChunks.push_back(temp.append(DATA_SIZE - temp.length(), NULL_BYTE));
-            }
-            else {
-                dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
-            }
-            break;
-        }
-        else {
-            dataChunks.emplace_back(temp, 0, DATA_SIZE);
-            temp.erase(0, DATA_SIZE);
-        }
-    }
-    return dataChunks;
+	while (1) {
+		if (temp.size() < DATA_SIZE) {
+			if (temp.length() % DATA_SIZE) {
+				dataChunks.push_back(temp.append(DATA_SIZE - temp.length(), NULL_BYTE));
+			}
+			else {
+				dataChunks.emplace_back(DATA_SIZE, NULL_BYTE);
+			}
+			break;
+		}
+		else {
+			dataChunks.emplace_back(temp, 0, DATA_SIZE);
+			temp.erase(0, DATA_SIZE);
+		}
+	}
+	return dataChunks;
 }
 
 /*--------------------------------------------------------------------------
@@ -152,7 +152,7 @@ std::vector<std::string> Transmitter::packetizeData(const std::string& data) con
 -- It creates a string temporary and calls the addFileToQueue method.
 --------------------------------------------------------------------------*/
 void Transmitter::addFileToQueue(const LPTSTR& filePath) {
-    Transmitter::addFileToQueue(std::string(filePath));
+	Transmitter::addFileToQueue(std::string(filePath));
 }
 
 /*--------------------------------------------------------------------------
@@ -174,13 +174,13 @@ void Transmitter::addFileToQueue(const LPTSTR& filePath) {
 -- stored at that path, and adds that data to the queue.
 --------------------------------------------------------------------------*/
 void Transmitter::addFileToQueue(const std::string& filePath) {
-    std::ifstream file(filePath);
-    if (!file) {
-        //File opening error
-        throw std::runtime_error("File cannot be opened");
-    }
-    std::string fileContents{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-    Transmitter::addDataToQueue(fileContents);
+	std::ifstream file(filePath);
+	if (!file) {
+		//File opening error
+		throw std::runtime_error("File cannot be opened");
+	}
+	std::string fileContents{ std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>() };
+	Transmitter::addDataToQueue(fileContents);
 }
 
 /*--------------------------------------------------------------------------
@@ -204,148 +204,123 @@ void Transmitter::addFileToQueue(const std::string& filePath) {
 -- comm port, listening for the ACK response, resending if it doesnt receive one
 -- and then removing that sent packet from the queue.
 --------------------------------------------------------------------------*/
-void Transmitter::sendPacket(const HANDLE& commHandle) {
-    timeoutReached = false;
-    OVERLAPPED over = { 0 };
-    over.hEvent = CreateEvent(nullptr, false, false, nullptr);
-    SetCommMask(commHandle, EV_RXCHAR);
+void Transmitter::sendPacket(HWND hwnd, const HANDLE& commHandle) {
+	hDisplay = hwnd;
+	if (outputQueue.empty()) {
+		//Error, tried to send packet that doesn't exist
+		throw std::runtime_error("Tried to send a packet from an empty queue");
+	}
+	outputQueue.front().data;
+	std::string data = outputQueue.front().getOutputString();
+	//Overlapped struct goes in last parameter to writefile call
 
-    if (outputQueue.empty()) {
-        //Error, tried to send packet that doesn't exist
-        throw std::runtime_error("Tried to send a packet from an empty queue");
-    }
-    std::string data = outputQueue.front().getOutputString();
-    //Overlapped struct goes in last parameter to writefile call
+	OVERLAPPED osWrite = { 0 };
+	OVERLAPPED osReader = { 0 };
 
-    OVERLAPPED osWrite = { 0 };
-    OVERLAPPED osReader = { 0 };
+	DWORD dwWritten;
+	bool result = false;
 
-    DWORD dwWritten;
-    bool result = false;
+	// Create this writes OVERLAPPED structure hEvent.
+	osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-    // Create this writes OVERLAPPED structure hEvent.
-    osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-    //if (!WriteFile(commHandle,
-    //    data.c_str(),
-    //    PACKET_SIZE,
-    //    &dwWritten,
-    //    &osWrite
-    //))
-    //{
-    //    if (GetLastError() == ERROR_IO_PENDING) {
-    //        WaitForSingleObject(osWrite.hEvent, INFINITE);
-    //        //GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE);
-    //    }
-    //}
-    for (int i = 0; i < PACKET_SIZE; i++) {
-        WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
-    }
 
-    SetWindowText(GetDlgItem(hwnd1, PACK_SENT), std::to_string(++packetsSent).c_str());
+	if (!WriteFile(commHandle, data.c_str(), data.size(), &dwWritten, &osWrite)) {
+		if (GetLastError() == ERROR_IO_PENDING) {
+			if (!GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE)) {
+				OutputDebugString("PACKET FAILED\n");
+			}
+			else
+				OutputDebugString("PACKET SENT\n");
+		}
+		else {
+			OutputDebugString("PACKET FAILED\n");
+		}
+	}
+	else
+		OutputDebugString("PACKET SENT\n");
+	SetWindowText(GetDlgItem(hDisplay, PACK_SENT), std::to_string(++packetsSent).c_str());
 
-    if (data.find_first_of(static_cast<char>(NULL_BYTE)) != std::string::npos) {
-        SetWindowText(GetDlgItem(hwnd1, TX_COMP), std::to_string(++sendingCompletion).c_str());
-    }
+	std::string buf;
+	DWORD success;
+	DWORD test;
+	DWORD dwEvent;
+	char chRead;
+	bool boolReadAck = false;
 
-    //ackTimer.start();
 
-    std::string buf;
-    DWORD success;
-    DWORD test;
-    DWORD dwEvent;
-    char chRead;
-    bool boolReadAck = false;
-    while (1) {
-        if (!WaitCommEvent(commHandle, &dwEvent, &over))
-        {
-            if (GetLastError() == ERROR_IO_PENDING)
-            {
-                if (WaitForSingleObject(over.hEvent, (DWORD)DISCONNECT_TIMEOUT) == WAIT_OBJECT_0)
-                {
-                    if (GetOverlappedResult(commHandle, &over, &test, FALSE)) {
-                        if (!ReadFile(commHandle, &chRead, 1, &success, &osReader))
-                        {
-                            if (GetLastError() == ERROR_IO_PENDING) {
-                                if (WaitForSingleObject(over.hEvent, (PACKET_SIZE / BAUD_RATE) * 1000) == WAIT_OBJECT_0)
-                                    if (GetOverlappedResult(commHandle, &osReader, &success, FALSE))
-                                        if (success && chRead == ACK) {
-                                            boolReadAck = true;
-                                        }
-                            }
-                        }
-                        else
-                            if (success && chRead == ACK) {
-                                boolReadAck = true;
-                            }
-                    }
-                }
-            }
-        }
-        else {
-            if (!ReadFile(commHandle, &chRead, 1, &success, &osReader))
-            {
-                if (GetLastError() == ERROR_IO_PENDING) {
-                    if (WaitForSingleObject(over.hEvent, (PACKET_SIZE / BAUD_RATE) * 1000) == WAIT_OBJECT_0)
-                        if (GetOverlappedResult(commHandle, &osReader, &success, FALSE))
-                            if (success && chRead == ACK) {
-                                boolReadAck = true;
-                            }
-                }
-            }
-            else
-                if (success && chRead == ACK) {
-                    boolReadAck = true;
-                }
-        }
+	COMMTIMEOUTS CommTimeouts;
+	GetCommTimeouts(commHandle, &CommTimeouts);
 
-        if (!boolReadAck) {
-            retryCounter++;
-            if (retryCounter > MAX_RETRIES) {
-                closeTransmitter();
-                return;
-            }
-            for (int i = 0; i < PACKET_SIZE; i++) {
-                WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
-            }
-        }
-        else {
-            SetWindowText(GetDlgItem(hwnd1, ACK_RECD), std::to_string(++acksReceived).c_str());
-            break;
-        }
-    }
-    outputQueue.pop();
+	// Change the COMMTIMEOUTS structure settings.
+	CommTimeouts.ReadIntervalTimeout = MAXDWORD;
+	CommTimeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
+	CommTimeouts.ReadTotalTimeoutConstant = TRANSMISSION_TIMEOUT;
 
-    //while (true) {
-    //    while (!timeoutReached) {
-    //        if (WaitCommEvent(commHandle, nullptr, &over)) {
-    //            ReadFile(commHandle, &buf, 1, &success, &over);
-    //            if (success && buf.front() == ACK) {
-    //                ackTimer.stop();
-    //                break;
-    //            }
-    //        }
-    //    }
+	// Set the timeout parameters for all read and write operations
+	// on the port. 
+	SetCommTimeouts(commHandle, &CommTimeouts);
+	bool boolReadByte = false;
+	while (1) {
+		if (!ReadFile(commHandle, &chRead, 1, &success, &osReader))
+		{
+			if (GetLastError() == ERROR_IO_PENDING) {
+				if (GetOverlappedResult(commHandle, &osReader, &success, TRUE))
+					boolReadByte = true;
+				else
+					boolReadByte = false;
+			}
+			else
+				boolReadByte = false;
+		}
+		else
+			boolReadByte = true;
 
-    //    ackTimer.stop();
 
-    //    if (timeoutReached) {
-    //        retryCounter++;
-    //        if (retryCounter > MAX_RETRIES) {
-    //            closeTransmitter();
-    //            return;
-    //        }
-    //        for (int i = 0; i < PACKET_SIZE; i++) {
-    //            WriteFile(commHandle, &data[i], 1, &dwWritten, &osWrite);
-    //        }
-    //        ackTimer.start();
-    //    } else {
-    //        break;
-    //    }
-    //}
-    //outputQueue.pop();
+		if (success && boolReadByte && chRead == ACK) {
+			boolReadAck = true;
+			SetWindowText(GetDlgItem(hDisplay, ACK_RECD), std::to_string(++acksReceived).c_str());
+			if (data.find_first_of(static_cast<char>(NULL_BYTE)) != std::string::npos) {
+				SetWindowText(GetDlgItem(hDisplay, TX_COMP), std::to_string(++sendingCompletion).c_str());
+			}
+		}
+
+		if (!boolReadAck) {
+			retryCounter++;
+			if (retryCounter >= MAX_RETRIES) {
+				closeTransmitter();
+				break;
+			}
+			if (!WriteFile(commHandle, data.c_str(), data.size(), &dwWritten, &osWrite)) {
+				if (GetLastError() == ERROR_IO_PENDING) {
+					if (!GetOverlappedResult(commHandle, &osWrite, &dwWritten, TRUE)) {
+						OutputDebugString("PACKET FAILED\n");
+					}
+					else
+						OutputDebugString("PACKET SENT\n");
+
+				}
+				else {
+					OutputDebugString("PACKET FAILED\n");
+				}
+			}
+			else
+				OutputDebugString("PACKET SENT\n");
+			SetWindowText(GetDlgItem(hDisplay, PACK_SENT), std::to_string(++packetsSent).c_str());
+		}
+		else {
+			break;
+		}
+	}
+	if (!outputQueue.empty())
+		outputQueue.pop();
+	//CloseHandle(over.hEvent);
+	CloseHandle(osWrite.hEvent);
+	CloseHandle(osReader.hEvent);
+	PurgeComm(commHandle, PURGE_TXABORT | PURGE_TXCLEAR);
 }
+
 
 /*--------------------------------------------------------------------------
 -- FUNCTION: closeTransmitter
@@ -366,11 +341,16 @@ void Transmitter::sendPacket(const HANDLE& commHandle) {
 -- emptying the trasmitter queue.
 --------------------------------------------------------------------------*/
 void Transmitter::closeTransmitter() {
-    retryCounter = 0;
-    acksReceived = 0;
-    packetsSent = 0;
-    sendingCompletion = 0;
-    std::queue<Packet>().swap(outputQueue);
+	retryCounter = 0;
+	acksReceived = 0;
+	packetsSent = 0;
+	sendingCompletion = 0;
+
+	SetWindowText(GetDlgItem(hDisplay, ACK_RECD), std::to_string(acksReceived).c_str());
+	SetWindowText(GetDlgItem(hDisplay, PACK_SENT), std::to_string(packetsSent).c_str());
+	SetWindowText(GetDlgItem(hDisplay, TX_COMP), std::to_string(sendingCompletion).c_str());
+
+	std::queue<Packet>().swap(outputQueue);
 }
 
 /*--------------------------------------------------------------------------
@@ -392,5 +372,5 @@ void Transmitter::closeTransmitter() {
 -- an atomic bool to true, which indicates that the timeout has been reached.
 --------------------------------------------------------------------------*/
 void Transmitter::ackTimeout() {
-    timeoutReached = true;
+	timeoutReached = true;
 }

@@ -53,6 +53,8 @@ namespace transmit {
         int sendingCompletion = 0;
         int retryCounter = 0;           // dependent on MAX_RETRIES constant
 
+		HWND hDisplay;
+
         typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 2000> AckTimer;
         //typedef Timer<&ackTimeout, (PACKET_SIZE / BAUD_RATE) * 1000> AckTimer;
         AckTimer ackTimer; // Timer Object to mearure timeout 
@@ -66,7 +68,7 @@ namespace transmit {
         void addDataToQueue(const std::string& data);     // data received as const a string 
         void addFileToQueue(const LPTSTR& filePath);      // path to data is receives. Stream needed to read
         void addFileToQueue(const std::string& filePath); // path to data is receives. Stream needed to read
-        void sendPacket(const HANDLE& commHandle);        // Called by connect.  
+        void sendPacket(HWND hwnd, const HANDLE& commHandle);        // Called by connect.  
         bool outGoingDataInBuffer() const { return !outputQueue.empty(); }; // allows for check of availability 
                                                                             // of outgoing data 
         void closeTransmitter(); 

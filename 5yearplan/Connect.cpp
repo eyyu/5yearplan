@@ -22,15 +22,14 @@
 #include <chrono>
 
 #include "Connect.h"
-#include "Command.h"
 
 /*--------------------------------------------------------------------------
 -- FUNCTION: startRandomEnqTimer
 --
 -- DATE: NOV.19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - DESCRIPTION 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - DESCRIPTION
 --
 -- DESIGNER: Eva Yu
 --
@@ -40,20 +39,26 @@
 --
 --
 -- NOTES:
--- starts A timer that runs on a random time between 0 - 100 ms 
+-- starts A timer that runs on a random time between 0 - 100 ms
 --------------------------------------------------------------------------*/
 void startRandomEnqTimer()
 {
-    randomEnqTimer.start();
+	randomEnqTimer.start();
 }
 
+void startIdleStateTimer()
+{
+	idleStateTimer.start();
+}
+
+int count = 0;
 /*--------------------------------------------------------------------------
 -- FUNCTION: enqLine
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - created function 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - created function
 --
 -- DESIGNER: Eva Yu
 --
@@ -68,14 +73,14 @@ void enqLine()
 {
 	if (!isReading && !isWriting)
 	{
-		if (enqCount >= MAX_RETRIES)
+		if (enqCount >= ENQ_MAX_RETRIES)
 		{
 			stopConnnection();
 			return;
 		}
 		writeChar(ENQ);
 	}
-    return;
+	return;
 }
 
 /*--------------------------------------------------------------------------
@@ -83,8 +88,8 @@ void enqLine()
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - cretated function 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - cretated function
 --
 -- DESIGNER: Eva Yu
 --
@@ -94,7 +99,7 @@ void enqLine()
 -- LPCSTR 	string representnf the address of the com port
 -- HWND 	handle to the display window
 --
--- RETURNS: 
+-- RETURNS:
 --
 -- NOTES:
 -- this is called initiall when the user clicks "connect"
@@ -116,8 +121,8 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 		return false;
 	}
 	COMMCONFIG cc;
-    GetDefaultCommConfig(commPortAddress, &cc, &cc.dwSize);
-    cc.dcb.BaudRate = 9600;
+	GetDefaultCommConfig(commPortAddress, &cc, &cc.dwSize);
+	cc.dcb.BaudRate = 9600;
 
 	if (CommConfigDialog(commPortAddress, hwnd, &cc)) {
 		SetCommState(hComm, &cc.dcb);
@@ -126,7 +131,6 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 		connectedThread.detach(); // run connected threas in background
 		return true;
 	}
-	
 }
 
 /*--------------------------------------------------------------------------
@@ -134,9 +138,9 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - created event driven IO 
--- Version 2.0 - [TK] - 2016/NOV/28 - added overlapped features 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - created event driven IO
+-- Version 2.0 - [TK] - 2016/NOV/28 - added overlapped features
 -- Version 2.0 - [EY] - 2016/NOV/28 - ensured proper flags and timer set
 --
 -- DESIGNER: Eva Yu
@@ -144,27 +148,25 @@ bool startConnnection(LPCTSTR commPortAddress, HWND hwnd)
 -- PROGRAMMER: Eva Yu
 --
 -- INTERFACE: bool startConnectProc (functionParams)
--- HWND 	handle tothe main window	
+-- HWND 	handle tothe main window
 -- HWND 	handle to the display window
 --
--- RETURNS: 
--- a boolean value to inidicae success / failure 
+-- RETURNS:
+-- a boolean value to inidicae success / failure
 --
 -- NOTES:
 -- NOTES
 --------------------------------------------------------------------------*/
 bool startConnectProc(HWND hDisplay, HWND hwnd)
 {
-
 	char inBuff[PACKET_SIZE];
 	DWORD nBytesRead, dwEvent, dwError;
 	COMSTAT cs;
 	bool timedout = false;
 
-	OVERLAPPED timeoutEvent;
+	OVERLAPPED timeoutEvent = { 0 };
 	OVERLAPPED osReader = { 0 };
 
-	memset((char *)&timeoutEvent, 0, sizeof(OVERLAPPED));
 	timeoutEvent.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	osReader.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
@@ -195,7 +197,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 		{
 			if (GetLastError() == ERROR_IO_PENDING)
 			{
-				if (WaitForSingleObject(timeoutEvent.hEvent, (DWORD)DISCONNECT_TIMEOUT) == WAIT_OBJECT_0)
+				if (WaitForSingleObject(timeoutEvent.hEvent, (DWORD)BYTE_TIMEOUT) == WAIT_OBJECT_0)
 				{
 					if (GetOverlappedResult(hComm, &timeoutEvent, &nBytesRead, FALSE))
 						timedout = false;
@@ -206,15 +208,13 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 					timedout = true;
 
 				}
-				ResetEvent(timeoutEvent.hEvent);
 			}
 			else
 			{
-				//Anything in here? 
+				timedout = true;
 			}
-			ClearCommError(hComm, &dwError, &cs);
 		}
-		else 
+		else
 		{
 			timedout = false;
 		}
@@ -223,15 +223,26 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 			ClearCommError(hComm, &dwError, &cs);
 			if ((dwEvent & EV_RXCHAR) && cs.cbInQue)
 			{
+				COMMTIMEOUTS CommTimeouts;
+				GetCommTimeouts(hComm, &CommTimeouts);
+
+				// Change the COMMTIMEOUTS structure settings.
+				CommTimeouts.ReadIntervalTimeout = MAXDWORD;
+				CommTimeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
+				CommTimeouts.ReadTotalTimeoutConstant = BYTE_TIMEOUT;
+
+				// Set the timeout parameters for all read and write operations
+				// on the port. 
+				SetCommTimeouts(hComm, &CommTimeouts);
 				char chRead;
-				bool boolRead = false; 
+				bool boolRead = false;
 				// should read in a loop? to eliminate all intial ENQS? 
 				if (!ReadFile(hComm, &chRead, 1, &nBytesRead, &osReader))
 				{
 					if (GetLastError() == ERROR_IO_PENDING) {
-						if (WaitForSingleObject(osReader.hEvent, INFINITE) == WAIT_OBJECT_0)
-							if (GetOverlappedResult(hComm, &osReader, &nBytesRead, FALSE))
-								boolRead = true;
+						if (GetOverlappedResult(hComm, &osReader, &nBytesRead, TRUE)) {
+							boolRead = true;
+						}
 					}
 					else
 					{
@@ -247,6 +258,9 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 					{
 						if (chRead == ACK)
 						{
+							OutputDebugString("RECEIVED ACK \n");
+
+							//waitingReceptionTimoutTimer.stop();
 							randomEnqTimer.stop();
 							idleStateTimer.stop();
 							if (isWaitingForAck)
@@ -255,35 +269,24 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 								enqCount = 0;
 								if (TX.outGoingDataInBuffer()) {
 									isWriting = true;
-									TX.sendPacket(hComm);
+									TX.sendPacket(hDisplay, hComm);
 									isWriting = false;
 								}
 								else
 								{
-									std::this_thread::sleep_for(std::chrono::milliseconds(RECEPTION_TIMEOUT));
+									//waitingReceptionTimoutTimer.start();
+									std::this_thread::sleep_for(std::chrono::milliseconds(TRANSMISSION_TIMEOUT * 2 + BYTE_TIMEOUT));
 									idleStateTimer.start();
+
 								}
 							}
-							
-						}
-						//else if (chRead == ENQ)
-						//{
-						//	idleStateTimer.stop();
-						//	randomEnqTimer.stop();
-						//	writeChar(ACK);
-						//	idleStateTimer.start();
-						//}
-						//else if (isWaitingForPacket)
-						//{
 
-						//	if (RX.start(hDisplay, hwnd, hComm))
-						//	{	
-						//		idleStateTimer.stop();
-						//		isWaitingForPacket = false;
-						//	}
-						//}
+						}
 						else if (chRead == ENQ)
 						{
+							OutputDebugString("RECEIVED ENQ \n");
+
+							//waitingReceptionTimoutTimer.stop();
 							randomEnqTimer.stop();
 							idleStateTimer.stop();
 							PurgeComm(hComm, PURGE_RXCLEAR);
@@ -291,7 +294,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 							if (isWaitingForPacket)
 							{
 								isReading = true;
-								if (RX.start(hDisplay, hwnd, hComm))
+								if (RX.start(hDisplay, hComm))
 								{
 									isReading = false;
 									isWaitingForPacket = false;
@@ -332,9 +335,9 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - creted function 
--- Version 1.5 - [EY] - 2016/NOV/19 - added sleep to ensure complete timeout 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - creted function
+-- Version 1.5 - [EY] - 2016/NOV/19 - added sleep to ensure complete timeout
 --
 -- DESIGNER: Eva Yu
 --
@@ -342,7 +345,7 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 --
 -- INTERFACE: bool stopConnection (void)
 --
--- RETURNS: 
+-- RETURNS:
 -- boolean to indicate success / fail of program
 --
 -- NOTES:
@@ -350,19 +353,20 @@ bool startConnectProc(HWND hDisplay, HWND hwnd)
 --------------------------------------------------------------------------*/
 bool stopConnnection()
 {
-    if (isConnected)
-    {
+	if (isConnected)
+	{
 		idleStateTimer.stop();
 		//randomEnqTimer.stop();
-        isConnected = false;
+		isConnected = false;
 		Sleep(DISCONNECT_TIMEOUT);
-        TX.closeTransmitter();
-        RX.closeReceiption();
+		TX.closeTransmitter();
+		RX.closeReceiption();
 		resetDataValues();
-        PurgeComm(hComm, PURGE_TXABORT | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_RXCLEAR);
-        CloseHandle(hComm);
-        return true;
-    }
+		PurgeComm(hComm, PURGE_TXABORT | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_RXCLEAR);
+		CloseHandle(hComm);
+		MessageBox(NULL, "Disconnected!!!", "INFO", MB_OK);
+		return true;
+	}
 
 }
 
@@ -371,8 +375,8 @@ bool stopConnnection()
 --
 -- DATE: NOV. 30, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/30 - created function 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/30 - created function
 --
 -- DESIGNER: Eva Yu
 --
@@ -380,19 +384,19 @@ bool stopConnnection()
 --
 -- INTERFACE: void resetDataValues (void)
 --
--- RETURNS: 
+-- RETURNS:
 --
 -- NOTES:
 -- called to reset any flags and values used inthe thread procedure
 --------------------------------------------------------------------------*/
 void resetDataValues()
 {
-    isWriting = false;
-    packetCount = 0;
-    isReading = false;
-    isWaitingForPacket = false;
-    isWaitingForAck = false;
-    enqCount = 0;
+	isWriting = false;
+	packetCount = 0;
+	isReading = false;
+	isWaitingForPacket = false;
+	isWaitingForAck = false;
+	enqCount = 0;
 }
 
 /*--------------------------------------------------------------------------
@@ -400,8 +404,8 @@ void resetDataValues()
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - DESCRIPTION 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - DESCRIPTION
 --
 -- DESIGNER: Eva Yu
 --
@@ -410,26 +414,19 @@ void resetDataValues()
 -- INTERFACE: bool sendNewFile (LPCSTR)
 -- LPCSTR complete file path as string
 --
--- RETURNS: 
+-- RETURNS:
 --
 -- NOTES:
--- calls transmitter object and passes new file to it. 
+-- calls transmitter object and passes new file to it.
 -- if another process is not going on right now, it will immediately start the enqTimer
 --------------------------------------------------------------------------*/
 bool sendNewFile(LPCSTR filePath)
 {
-    if (isConnected)
-    {
-        TX.addFileToQueue(filePath);
-        if(!isReading
-        	&& !isWriting)
-        {
-	        idleStateTimer.stop();
-	        randomEnqTimer.start();
-        }
-        return true;
-    }
-    return false;
+	if (isConnected)
+	{
+		TX.addFileToQueue(filePath);
+	}
+	return false;
 }
 
 /*--------------------------------------------------------------------------
@@ -437,8 +434,8 @@ bool sendNewFile(LPCSTR filePath)
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - created function 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - created function
 --
 -- DESIGNER: Eva Yu
 --
@@ -447,25 +444,18 @@ bool sendNewFile(LPCSTR filePath)
 -- INTERFACE: bool sendNewData (LPCSTR)
 -- LPCSTR the user typed data
 --
--- RETURNS: 
+-- RETURNS:
 --
 -- NOTES:
--- this sends user typed data 
+-- this sends user typed data
 --------------------------------------------------------------------------*/
 bool sendNewData(LPCSTR dataString)
 {
-    if (isConnected)
-    {
-        TX.addDataToQueue(dataString);
-        if(!isReading
-        	&& !isWriting)
-        {
-	        idleStateTimer.stop();
-	        randomEnqTimer.start();
-        }
-        return true;
-    }
-    return false;
+	if (isConnected)
+	{
+		TX.addDataToQueue(dataString);
+	}
+	return false;
 }
 
 /*--------------------------------------------------------------------------
@@ -473,9 +463,9 @@ bool sendNewData(LPCSTR dataString)
 --
 -- DATE: NOV. 19, 2016
 --
--- REVISIONS: 
--- Version 1.0 - [EY] - 2016/NOV/19 - created function 
--- Version 1.0 - [TK] - 2016/NOV/19 - added overlapped 
+-- REVISIONS:
+-- Version 1.0 - [EY] - 2016/NOV/19 - created function
+-- Version 1.0 - [TK] - 2016/NOV/19 - added overlapped
 --
 -- DESIGNER: Eva Yu
 --
@@ -484,7 +474,7 @@ bool sendNewData(LPCSTR dataString)
 -- INTERFACE: bool writeChar (const char)
 -- const char {10:desc}
 --
--- RETURNS: 
+-- RETURNS:
 --
 -- NOTES:
 -- writes an enq or ack char to line
@@ -496,46 +486,44 @@ bool writeChar(const char c)
 	bool result = true;
 	// Create this writes OVERLAPPED structure hEvent.
 	osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	
+
 	if (osWrite.hEvent == NULL) {
 		return false;
 	}
-    
+
 	if (!WriteFile(hComm,
-                  &c,
-                  1,
-                  &dwWritten,
-                  &osWrite
-                  ))
-    {
+		&c,
+		1,
+		&dwWritten,
+		&osWrite
+		))
+	{
 		if (GetLastError() != ERROR_IO_PENDING) {
 			result = false;
 		}
-		else 
+		else
 		{
-			if (WaitForSingleObject(osWrite.hEvent, INFINITE) == WAIT_OBJECT_0) 
-			{
-				if (!GetOverlappedResult(hComm, &osWrite, &dwWritten, TRUE))
-					result = false;
-			}
-			else
-			{
+			if (!GetOverlappedResult(hComm, &osWrite, &dwWritten, TRUE))
 				result = false;
-			}
 		}
 	}
 
 	if (result) {
 		if (c == ACK) {
 			isWaitingForPacket = true;
+			OutputDebugString("SENT ACK");
+
 		}
 		else if (c == ENQ)
 		{
 			++enqCount;
 			isWaitingForAck = true;
+			char buff[100];
+			sprintf_s(buff, "%s : %d\n", "Sent ENQ", ++count);
+			OutputDebugString(buff);
 		}
 	}
 
 	CloseHandle(osWrite.hEvent);
-    return result;
+	return result;
 }
